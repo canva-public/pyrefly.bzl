@@ -12,9 +12,9 @@ jobs:
         os: [ubuntu-latest, macos-latest]
     runs-on: ${{ matrix.os }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
       - uses: facebook/install-dotslash@v2
-      - uses: bazel-contrib/setup-bazel@0.18.0
+      - uses: bazel-contrib/setup-bazel@0.19.0
         with:
           bazelisk-cache: true
           disk-cache: ${{ runner.os }}-bazel-disk
