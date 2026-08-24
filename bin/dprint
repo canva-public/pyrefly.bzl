@@ -1,0 +1,46 @@
+#!/usr/bin/env dotslash
+
+{
+  "name": "dprint",
+  "platforms": {
+    "linux-x86_64": {
+      "size": 10442349,
+      "hash": "sha256",
+      "digest": "14f40c47b2a1c79ced321b62bf177f88f064d7b11c41f1ee28488ee0d9391bb2",
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        {
+          "type": "http",
+          "url": "https://github.com/dprint/dprint/releases/download/0.55.1/dprint-x86_64-unknown-linux-gnu.zip"
+        }
+      ]
+    },
+    "macos-aarch64": {
+      "size": 9199414,
+      "hash": "sha256",
+      "digest": "94a9ce5ca91dbb609d4f22f2ccf28d8b422627c0944c6ee63d1beecac28f8cd4",
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        {
+          "type": "http",
+          "url": "https://github.com/dprint/dprint/releases/download/0.55.1/dprint-aarch64-apple-darwin.zip"
+        }
+      ]
+    },
+    "macos-x86_64": {
+      "size": 10146541,
+      "hash": "sha256",
+      "digest": "21f9784b3edf3b0a686932b4387359ebd83fba798ac2f7e2ba1e7b8c9f674e3e",
+      "format": "zip",
+      "path": "dprint",
+      "providers": [
+        {
+          "type": "http",
+          "url": "https://github.com/dprint/dprint/releases/download/0.55.1/dprint-x86_64-apple-darwin.zip"
+        }
+      ]
+    }
+  }
+}

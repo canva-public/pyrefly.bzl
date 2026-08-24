@@ -1,0 +1,63 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly.bzl", "pyrefly_stubs")
+
+_FIXTURE_TAGS = ["manual"]
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["*"]),
+    visibility = ["//:__subpackages__"],
+)
+
+py_library(
+    name = "clean",
+    srcs = ["clean.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+pyrefly_stubs(
+    name = "manual_stubs",
+    configuration = "//tools/pyrefly:pyrefly_config",
+    library = ":clean",
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "failure",
+    srcs = ["failure.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "expected_failure",
+    srcs = ["expected_failure.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "stale_expected_failure",
+    srcs = ["stale_expected_failure.py"],
+    tags = _FIXTURE_TAGS,
+    visibility = ["//tests/analysis:__pkg__"],
+)
+
+py_library(
+    name = "configured_stub",
+    srcs = ["configured_stub.py"],
+    tags = _FIXTURE_TAGS,
+    deps = ["@pyrefly_test_targets//:configured"],
+)
+
+py_library(
+    name = "skipped_stubgen",
+    srcs = ["skipped_stubgen.py"],
+    tags = _FIXTURE_TAGS,
+    deps = ["@pyrefly_test_targets//:skipped"],
+)
+
+py_library(
+    name = "automatic_stubgen",
+    srcs = ["automatic_stubgen.py"],
+    tags = _FIXTURE_TAGS,
+    deps = ["@pyrefly_test_targets//:automatic"],
+)

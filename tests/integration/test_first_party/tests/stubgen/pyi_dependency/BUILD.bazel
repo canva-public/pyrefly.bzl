@@ -1,0 +1,41 @@
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_inputs", "pyrefly_check_test")
+
+py_library(
+    name = "context",
+    imports = ["."],
+    pyi_srcs = ["pyi_context.pyi"],
+)
+
+py_library(
+    name = "library",
+    srcs = ["library.py"],
+    pyi_deps = [":context"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "consumer",
+    testonly = True,
+    srcs = ["consumer.py"],
+    deps = [":library"],
+)
+
+pyrefly_check_test(
+    name = "check_test",
+    target = ":consumer",
+)
+
+pyrefly_check_inputs(
+    name = "inputs",
+    testonly = True,
+    target = ":consumer",
+)
+
+pytest_test(
+    name = "output_test",
+    srcs = ["output_test.py"],
+    data = [":inputs"],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)

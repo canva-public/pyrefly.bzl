@@ -1,0 +1,42 @@
+module(
+    name = "pyrefly_first_party_fixture",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "pyrefly.bzl", version = "0.1.0")
+
+bazel_dep(name = "pyrefly_integration_testlib", version = "0.0.0", dev_dependency = True)
+bazel_dep(name = "pyrefly_testlib", version = "0.0.0", dev_dependency = True)
+
+bazel_dep(name = "rules_python", version = "2.0.0")
+
+local_path_override(
+    module_name = "pyrefly.bzl",
+    path = "../../..",
+)
+
+local_path_override(
+    module_name = "pyrefly_integration_testlib",
+    path = "../testlib",
+)
+
+local_path_override(
+    module_name = "pyrefly_testlib",
+    path = "../../testlib",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = "3.13.11",
+)
+
+pyrefly = use_extension("@pyrefly.bzl", "pyrefly")
+pyrefly.toolchain(
+    version = "1.1.1",
+)
+use_repo(pyrefly, "pyrefly_toolchain")
+
+register_toolchains("@pyrefly_toolchain//:all")

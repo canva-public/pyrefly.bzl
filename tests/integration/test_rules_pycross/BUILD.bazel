@@ -1,0 +1,19 @@
+load("@pyrefly.bzl", "pyrefly_configuration")
+
+exports_files(["pyproject.toml"])
+
+package_group(
+    name = "pypi_packages",
+    packages = ["@integration_pypi//..."],
+)
+
+pyrefly_configuration(
+    name = "pyrefly_config",
+    config = ":pyproject.toml",
+    stub_packages = {
+        "@integration_pypi//:grpcio": "@integration_pypi//:types-grpcio",
+    },
+    stubgen_exclude = ["@integration_pypi//:google-auth"],
+    stubgen_include = [":pypi_packages"],
+    visibility = ["//visibility:public"],
+)

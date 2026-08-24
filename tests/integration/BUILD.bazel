@@ -1,0 +1,90 @@
+load("@bazel_binaries//:defs.bzl", "bazel_binaries")
+load(
+    "@rules_bazel_integration_test//bazel_integration_test:defs.bzl",
+    "integration_test_utils",
+    "script_test",
+)
+
+_FIRST_PARTY_WORKSPACE_FILES = integration_test_utils.glob_workspace_files("test_first_party") + [
+    "//:local_repository_files",
+]
+
+script_test(
+    name = "first_party_test",
+    srcs = ["test_first_party/check_fixtures.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    tags = ["exclusive"],
+    workspace_files = _FIRST_PARTY_WORKSPACE_FILES,
+    workspace_path = "test_first_party",
+    deps = [],
+)
+
+script_test(
+    name = "first_party_baseline_test",
+    srcs = ["test_first_party/check_baselines.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    tags = ["exclusive"],
+    workspace_files = _FIRST_PARTY_WORKSPACE_FILES,
+    workspace_path = "test_first_party",
+    deps = [],
+)
+
+script_test(
+    name = "first_party_type_error_test",
+    srcs = ["test_first_party/check_failure.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    env = {
+        "EXPECTED_TARGET": "//failing_tests/type_error:fixture",
+    },
+    tags = ["exclusive"],
+    workspace_files = _FIRST_PARTY_WORKSPACE_FILES,
+    workspace_path = "test_first_party",
+    deps = [],
+)
+
+script_test(
+    name = "first_party_invalid_interface_test",
+    srcs = ["test_first_party/check_failure.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    env = {
+        "EXPECTED_TARGET": "//failing_tests/invalid_interface:fixture",
+    },
+    tags = ["exclusive"],
+    workspace_files = _FIRST_PARTY_WORKSPACE_FILES,
+    workspace_path = "test_first_party",
+    deps = [],
+)
+
+script_test(
+    name = "first_party_stale_expected_failure_test",
+    srcs = ["test_first_party/check_failure.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    env = {
+        "EXPECTED_OUTPUT": "sed -i '\\|//failing_tests/stale_expected_failure:fixture|d' BUILD.bazel",
+        "EXPECTED_TARGET": "//failing_tests/stale_expected_failure:fixture",
+    },
+    tags = ["exclusive"],
+    workspace_files = _FIRST_PARTY_WORKSPACE_FILES,
+    workspace_path = "test_first_party",
+    deps = [],
+)
+
+_RULES_PYCROSS_WORKSPACE_FILES = integration_test_utils.glob_workspace_files("test_rules_pycross") + [
+    "//:local_repository_files",
+]
+
+script_test(
+    name = "rules_pycross_test",
+    srcs = ["test_rules_pycross/check_fixtures.sh"],
+    bazel_binaries = bazel_binaries,
+    bazel_version = bazel_binaries.versions.current,
+    tags = ["exclusive"],
+    workspace_files = _RULES_PYCROSS_WORKSPACE_FILES,
+    workspace_path = "test_rules_pycross",
+    deps = [],
+)

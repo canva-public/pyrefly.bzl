@@ -1,0 +1,4 @@
+interface:
+  display_name: "Add Pyrefly Version"
+  short_description: "Resolve and register Pyrefly release checksums"
+  default_prompt: "Use $add-pyrefly-version to resolve a requested Pyrefly version and register it in versions.bzl."

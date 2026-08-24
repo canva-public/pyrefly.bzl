@@ -1,0 +1,69 @@
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_inputs", "pyrefly_check_test")
+
+py_library(
+    name = "dependency",
+    testonly = True,
+    srcs = ["dependency.py"],
+    imports = ["."],
+    tags = ["skip-pyrefly"],
+)
+
+py_library(
+    name = "consumer",
+    testonly = True,
+    srcs = ["consumer.py"],
+    deps = [":dependency"],
+)
+
+pyrefly_check_test(
+    name = "minified_check_test",
+    target = ":consumer",
+)
+
+pyrefly_check_inputs(
+    name = "minified_inputs",
+    testonly = True,
+    target = ":consumer",
+)
+
+pytest_test(
+    name = "minified_output_test",
+    srcs = ["minified_output_test.py"],
+    data = [":minified_inputs"],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)
+
+py_library(
+    name = "stubgen_dependency",
+    srcs = ["stubgen_dependency.py"],
+    imports = ["."],
+    tags = ["skip-pyrefly-too"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "stubgen_consumer",
+    testonly = True,
+    srcs = ["stubgen_consumer.py"],
+    deps = [":stubgen_dependency"],
+)
+
+pyrefly_check_test(
+    name = "stubgen_check_test",
+    target = ":stubgen_consumer",
+)
+
+pyrefly_check_inputs(
+    name = "stubgen_inputs",
+    testonly = True,
+    target = ":stubgen_consumer",
+)
+
+pytest_test(
+    name = "stubgen_output_test",
+    srcs = ["stubgen_output_test.py"],
+    data = [":stubgen_inputs"],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)

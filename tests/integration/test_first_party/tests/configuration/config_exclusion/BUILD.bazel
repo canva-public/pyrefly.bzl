@@ -1,0 +1,13 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_test")
+
+py_library(
+    name = "fixture",
+    testonly = True,
+    srcs = ["fixture.py"],
+)
+
+pyrefly_check_test(
+    name = "test",
+    target = ":fixture",
+)

@@ -1,0 +1,22 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["*"]),
+    visibility = ["//:__subpackages__"],
+)
+
+py_binary(
+    name = "baseline_updater",
+    legacy_create_init = 0,
+    main_module = "pyrefly.private.baseline_updater",
+    visibility = ["//visibility:public"],
+    deps = [":baseline_updater_lib"],
+)
+
+py_library(
+    name = "baseline_updater_lib",
+    srcs = glob(["*.py"]),
+    imports = ["../../.."],
+    visibility = ["//visibility:public"],
+)

@@ -1,0 +1,25 @@
+load("@pyrefly.bzl", "pyrefly_configuration")
+
+exports_files(["pyproject.toml"])
+
+pyrefly_configuration(
+    name = "pyrefly_config",
+    baselines = "//pyrefly_baselines:baselines",
+    config = ":pyproject.toml",
+    exclude_tags = [
+        "skip-pyrefly",
+        "skip-pyrefly-too",
+    ],
+    expected_failures = [
+        "//tests/checking/expected_failure:fixture",
+        "//failing_tests/stale_expected_failure:fixture",
+    ],
+    stale_message = """\
+Pyrefly passed on target `%s`, but it is listed in the expected failures. Run the following command to remove it:
+    sed -i '\\|%s|d' BUILD.bazel""",
+    stubgen_include = [
+        "//tests/configuration/tag_exclusion:stubgen_dependency",
+        "//tests/stubgen/pyi_dependency:library",
+    ],
+    visibility = ["//visibility:public"],
+)

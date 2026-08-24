@@ -1,0 +1,58 @@
+{
+  "$schema": "https://dprint.dev/schemas/v0.json",
+  "lineWidth": 100,
+  "useTabs": false,
+  "newLineKind": "lf",
+  "excludes": [
+    "docs/api/aspects.md",
+    "docs/api/rules.md",
+    "docs/api/extension.md"
+  ],
+  "includes": [
+    "*.{bazel,bzl,md,py,pyi,star,toml,yaml,yml}",
+    "**/*.{bazel,bzl,md,py,pyi,star,toml,yaml,yml}",
+    "BUILD",
+    "WORKSPACE",
+    "**/BUILD",
+    "**/WORKSPACE"
+  ],
+  "exec": {
+    "cwd": "${configDir}",
+    "timeout": 80,
+    "associations": [
+      "*.{bazel,bzl,py,pyi,star}",
+      "**/*.{bazel,bzl,py,pyi,star}",
+      "BUILD",
+      "WORKSPACE",
+      "**/BUILD",
+      "**/WORKSPACE"
+    ],
+    "commands": [
+      {
+        "command": "bin/ruff check --select I001,F401 --fix-only --stdin-filename {{file_path}} --silent",
+        "associations": ["**/*.{py,pyi}"],
+        "cacheKeyFiles": ["pyproject.toml"]
+      },
+      {
+        "command": "bin/ruff format --stdin-filename {{file_path}} --silent",
+        "associations": ["**/*.{py,pyi}"],
+        "cacheKeyFiles": ["pyproject.toml"]
+      },
+      {
+        "command": "bin/buildifier --lint=fix --path={{file_path}}",
+        "associations": ["**{BUILD,WORKSPACE,.bazel,.bzl,.star}"]
+      }
+    ]
+  },
+  "markdown": {
+    "textWrap": "always"
+  },
+  "toml": {},
+  "yaml": {},
+  "plugins": [
+    "https://plugins.dprint.dev/exec-0.7.3.json@a7898d5f1897e77bff474cec3d948c3ec3a7f455e32de2cc60c8adb9a5dd24aa",
+    "https://plugins.dprint.dev/markdown-0.22.1.wasm",
+    "https://plugins.dprint.dev/toml-0.7.0.wasm",
+    "https://plugins.dprint.dev/g-plane/pretty_yaml-v0.6.0.wasm"
+  ]
+}

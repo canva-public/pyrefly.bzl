@@ -1,0 +1,41 @@
+load("@bazel_lib//lib:write_source_files.bzl", "write_source_files")
+load("//tools/stardoc:api_doc.bzl", "api_doc")
+
+api_doc(
+    name = "aspects",
+    input = "//:pyrefly.bzl",
+    symbol_names = [
+        "make_pyrefly_aspect",
+        "make_pyrefly_update_baseline_aspect",
+    ],
+    deps = ["//:defs"],
+)
+
+api_doc(
+    name = "extension",
+    input = "//:pyrefly.bzl",
+    symbol_names = [
+        "pyrefly",
+    ],
+    deps = ["//:defs"],
+)
+
+api_doc(
+    name = "rules",
+    input = "//:pyrefly.bzl",
+    symbol_names = [
+        "pyrefly_configuration",
+        "pyrefly_baselines",
+        "pyrefly_stubs",
+    ],
+    deps = ["//:defs"],
+)
+
+write_source_files(
+    name = "write_api_docs",
+    files = {
+        "aspects.md": ":aspects",
+        "extension.md": ":extension",
+        "rules.md": ":rules",
+    },
+)

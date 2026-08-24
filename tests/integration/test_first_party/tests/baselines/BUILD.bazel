@@ -1,0 +1,38 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+_FIXTURE_TAGS = ["manual"]
+
+py_library(
+    name = "baseline_cache_a",
+    testonly = True,
+    srcs = ["clean.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "baseline_cache_b",
+    testonly = True,
+    srcs = ["clean.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "baselined_failure",
+    testonly = True,
+    srcs = ["failure.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "clean",
+    testonly = True,
+    srcs = ["clean.py"],
+    tags = _FIXTURE_TAGS,
+)
+
+py_library(
+    name = "failure",
+    testonly = True,
+    srcs = ["failure.py"],
+    tags = _FIXTURE_TAGS,
+)

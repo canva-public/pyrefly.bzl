@@ -1,0 +1,23 @@
+# Child-workspace packages must be hidden so the integration workspace glob includes their files.
+common --deleted_packages=tests/integration/test_first_party
+common --deleted_packages=tests/integration/test_first_party/failing_tests/invalid_interface
+common --deleted_packages=tests/integration/test_first_party/failing_tests/stale_expected_failure
+common --deleted_packages=tests/integration/test_first_party/failing_tests/type_error
+common --deleted_packages=tests/integration/test_first_party/pyrefly_baselines
+common --deleted_packages=tests/integration/test_first_party/testlib
+common --deleted_packages=tests/integration/test_first_party/tests/baselines
+common --deleted_packages=tests/integration/test_first_party/tests/checking/expected_failure
+common --deleted_packages=tests/integration/test_first_party/tests/checking/success
+common --deleted_packages=tests/integration/test_first_party/tests/configuration/config_exclusion
+common --deleted_packages=tests/integration/test_first_party/tests/configuration/tag_exclusion
+common --deleted_packages=tests/integration/test_first_party/tests/imports/mixed_roots
+common --deleted_packages=tests/integration/test_first_party/tests/providers/direct_data_context
+common --deleted_packages=tests/integration/test_first_party/tests/providers/fallback_context
+common --deleted_packages=tests/integration/test_first_party/tests/providers/generated_context
+common --deleted_packages=tests/integration/test_first_party/tests/stubgen/manual
+common --deleted_packages=tests/integration/test_first_party/tests/stubgen/pyi_dependency
+common --deleted_packages=tests/integration/test_first_party/tests/stubgen/transformers
+common --deleted_packages=tests/integration/test_rules_pycross
+common --deleted_packages=tests/integration/test_rules_pycross/testlib
+common --deleted_packages=tests/integration/test_rules_pycross/tests/google_namespace
+common --deleted_packages=tests/integration/test_rules_pycross/tests/grpcio_stub_mapping

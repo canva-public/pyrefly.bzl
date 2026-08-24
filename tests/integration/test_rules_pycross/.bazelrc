@@ -1,0 +1,2 @@
+common --aspects=//:pyrefly_aspects.bzl%pyrefly_aspect
+common --@rules_python//python/config_settings:experimental_python_import_all_repositories=false

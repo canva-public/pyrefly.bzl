@@ -1,0 +1,92 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly.bzl", "pyrefly_stubs")
+load(":aspect_tests.bzl", "aspect_test_suite")
+load(":baseline_tests.bzl", "baseline_test_suite")
+load(":configuration_tests.bzl", "configuration_test_suite")
+load(":tag_filter_tests.bzl", "tag_filter_test_suite")
+load(":target_environment_tests.bzl", "target_environment_test_suite")
+
+filegroup(
+    name = "all_files",
+    srcs = glob([
+        "*",
+        "nested/package/*",
+    ]),
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "aspect_tests_bzl",
+    srcs = ["aspect_tests.bzl"],
+    deps = [
+        "//tools/pyrefly:pyrefly_aspects_bzl",
+        "@rules_python//python:defs_bzl",
+        "@rules_testing//lib:analysis_test_bzl",
+        "@rules_testing//lib:util_bzl",
+    ],
+)
+
+bzl_library(
+    name = "baseline_tests_bzl",
+    srcs = ["baseline_tests.bzl"],
+    deps = [
+        "//:defs",
+        "//pyrefly/private:providers",
+        "@rules_python//python:defs_bzl",
+        "@rules_testing//lib:analysis_test_bzl",
+        "@rules_testing//lib:truth_bzl",
+        "@rules_testing//lib:util_bzl",
+    ],
+)
+
+bzl_library(
+    name = "configuration_tests_bzl",
+    srcs = ["configuration_tests.bzl"],
+    deps = [
+        "//:defs",
+        "@rules_testing//lib:analysis_test_bzl",
+        "@rules_testing//lib:truth_bzl",
+    ],
+)
+
+bzl_library(
+    name = "tag_filter_tests_bzl",
+    srcs = ["tag_filter_tests.bzl"],
+    deps = [
+        "//pyrefly/private:configuration",
+        "@rules_testing//lib:unittest",
+    ],
+)
+
+bzl_library(
+    name = "target_environment_tests_bzl",
+    srcs = ["target_environment_tests.bzl"],
+    deps = [
+        "//pyrefly/private:providers",
+        "@rules_testing//lib:analysis_test_bzl",
+    ],
+)
+
+py_library(
+    name = "manual_stub_source",
+    srcs = ["dependency.py"],
+    tags = ["manual"],
+)
+
+pyrefly_stubs(
+    name = "manual_stubs",
+    configuration = "//tools/pyrefly:pyrefly_config",
+    library = ":manual_stub_source",
+    tags = ["manual"],
+)
+
+aspect_test_suite(name = "aspect_tests")
+
+baseline_test_suite(name = "baseline_tests")
+
+configuration_test_suite(name = "configuration_tests")
+
+tag_filter_test_suite(name = "tag_filter_tests")
+
+target_environment_test_suite(name = "target_environment_tests")

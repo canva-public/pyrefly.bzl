@@ -1,0 +1,7 @@
+exports_files(["pyrefly_check.bzl"])
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)

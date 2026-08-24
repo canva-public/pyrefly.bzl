@@ -1,0 +1,7 @@
+[project]
+name = "first-party-metadata-that-must-not-reach-pyrefly-actions"
+version = "0.0.0"
+requires-python = ">=3.11"
+
+[tool.pyrefly]
+project-excludes = ["tests/configuration/config_exclusion/fixture.py"]

@@ -1,0 +1,8 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "fixture",
+    testonly = True,
+    srcs = ["fixture.py"],
+    tags = ["manual"],
+)

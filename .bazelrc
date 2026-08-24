@@ -1,0 +1,6 @@
+common --symlink_prefix=bazel-links/
+common --aspects=//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_aspect
+common --@rules_python//python/config_settings:experimental_python_import_all_repositories=false
+common --incompatible_default_to_explicit_init_py=false
+
+import %workspace%/.bazelrc.deleted_packages

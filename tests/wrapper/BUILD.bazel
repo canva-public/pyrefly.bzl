@@ -1,0 +1,20 @@
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load(":pyrefly_test_executable.bzl", "pyrefly_test_executable")
+
+pyrefly_test_executable(
+    name = "pyrefly_test_executable",
+)
+
+pytest_test(
+    name = "wrapper_tests",
+    srcs = glob(["*.py"]),
+    args = ["-q"],
+    data = [":pyrefly_test_executable"],
+    env = {
+        "PYREFLY_TEST_EXECUTABLE": "$(rootpath :pyrefly_test_executable)",
+    },
+    deps = [
+        "//pyrefly/private/baseline_updater:baseline_updater_lib",
+        "//pyrefly/private/wrapper:wrapper_lib",
+    ],
+)

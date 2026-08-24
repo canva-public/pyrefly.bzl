@@ -1,0 +1,8 @@
+load("@pyrefly.bzl", "pyrefly_baselines")
+
+pyrefly_baselines(
+    name = "baselines",
+    srcs = glob(["**/*.json"]),
+    update_aspect = "//:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
+    visibility = ["//visibility:public"],
+)

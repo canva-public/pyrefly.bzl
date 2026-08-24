@@ -1,0 +1,84 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+package(default_visibility = ["//visibility:public"])
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["*"]),
+    visibility = ["//:__subpackages__"],
+)
+
+bzl_library(
+    name = "aspect",
+    srcs = ["aspect.bzl"],
+    deps = [
+        ":configuration",
+        ":providers",
+        ":pyrefly_check",
+        ":pyrefly_minify",
+        ":pyrefly_stubs",
+        "@bazel_skylib//rules:common_settings",
+        "@rules_python//python:defs_bzl",
+    ],
+)
+
+bzl_library(
+    name = "configuration",
+    srcs = ["configuration.bzl"],
+    deps = [
+        ":providers",
+        "@rules_python//python:defs_bzl",
+    ],
+)
+
+bzl_library(
+    name = "extension",
+    srcs = ["extension.bzl"],
+    deps = [":versions"],
+)
+
+bzl_library(
+    name = "providers",
+    srcs = ["providers.bzl"],
+)
+
+bzl_library(
+    name = "pyrefly_baselines",
+    srcs = ["pyrefly_baselines.bzl"],
+    deps = [":providers"],
+)
+
+bzl_library(
+    name = "pyrefly_check",
+    srcs = ["pyrefly_check.bzl"],
+    deps = [
+        ":providers",
+        "@bazel_skylib//rules:common_settings",
+    ],
+)
+
+bzl_library(
+    name = "pyrefly_minify",
+    srcs = ["pyrefly_minify.bzl"],
+    deps = ["@rules_python//python:defs_bzl"],
+)
+
+bzl_library(
+    name = "pyrefly_stubs",
+    srcs = ["pyrefly_stubs.bzl"],
+    deps = [
+        ":providers",
+        "@bazel_skylib//rules:common_settings",
+        "@rules_python//python:defs_bzl",
+    ],
+)
+
+bzl_library(
+    name = "toolchain",
+    srcs = ["toolchain.bzl"],
+)
+
+bzl_library(
+    name = "versions",
+    srcs = ["versions.bzl"],
+)

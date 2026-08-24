@@ -1,0 +1,47 @@
+load("@pyrefly.bzl", "pyrefly_stubs")
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_test")
+
+genrule(
+    name = "generated_records",
+    testonly = True,
+    srcs = ["records_pb2.generated.py"],
+    outs = ["application/data_access/src/python/generated/records_pb2.py"],
+    cmd = "cp $(location records_pb2.generated.py) $@",
+)
+
+py_library(
+    name = "library",
+    testonly = True,
+    srcs = glob(["application/data_access/src/python/**/*.py"]) + [
+        ":generated_records",
+    ],
+    imports = ["application/data_access/src/python"],
+)
+
+pyrefly_stubs(
+    name = "stubs",
+    testonly = True,
+    configuration = "//:pyrefly_config",
+    library = ":library",
+)
+
+pytest_test(
+    name = "stub_output_test",
+    srcs = ["stub_output_test.py"],
+    data = [":stubs"],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)
+
+py_library(
+    name = "consumer",
+    testonly = True,
+    srcs = ["consumer.py"],
+    deps = [":library"],
+)
+
+pyrefly_check_test(
+    name = "consumer_test",
+    target = ":consumer",
+)

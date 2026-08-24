@@ -1,0 +1,52 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+
+exports_files([
+    "LICENSE",
+    "README.md",
+    "pyproject.toml",
+    "pyrefly.bzl",
+])
+
+bzl_library(
+    name = "defs",
+    srcs = ["pyrefly.bzl"],
+    visibility = ["//visibility:public"],
+    deps = [
+        "//pyrefly/private:aspect",
+        "//pyrefly/private:configuration",
+        "//pyrefly/private:extension",
+        "//pyrefly/private:pyrefly_baselines",
+        "//pyrefly/private:pyrefly_stubs",
+    ],
+)
+
+filegroup(
+    name = "local_repository_files",
+    srcs = [
+        ".bazelrc",
+        ".bazelrc.deleted_packages",
+        ".bazelversion",
+        "BUILD.bazel",
+        "LICENSE",
+        "MODULE.bazel",
+        "MODULE.bazel.lock",
+        "pyproject.toml",
+        "pyrefly.bzl",
+        "uv.lock",
+        "//pyrefly:all_files",
+        "//pyrefly/private:all_files",
+        "//pyrefly/private/baseline_updater:all_files",
+        "//pyrefly/private/wrapper:all_files",
+        "//tests:all_files",
+        "//tests/analysis:all_files",
+        "//tests/consumer:all_files",
+        "//tests/external_targets:all_files",
+        "//tests/external_targets/nested:all_files",
+        "//tests/external_targets/nested/deeper:all_files",
+        "//tests/integration/testlib:all_files",
+        "//tests/testlib:all_files",
+        "//third_party/rules_pycross:all_files",
+        "//tools/pyrefly:all_files",
+    ],
+    visibility = ["//:__subpackages__"],
+)

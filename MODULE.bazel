@@ -1,0 +1,108 @@
+module(
+    name = "pyrefly.bzl",
+    version = "0.1.0",
+)
+
+bazel_dep(name = "rules_python", version = "2.0.0")
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "rules_pycross", version = "0.8.3")
+single_version_override(
+    module_name = "rules_pycross",
+    patch_strip = 1,
+    patches = ["//third_party/rules_pycross:rules_pycross_pyinfo.patch"],
+    version = "0.8.3",
+)
+
+bazel_dep(name = "rules_shell", version = "0.8.0", dev_dependency = True)
+bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
+bazel_dep(name = "bazel_lib", version = "3.1.0", dev_dependency = True)
+bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
+bazel_dep(
+    name = "rules_bazel_integration_test",
+    version = "0.37.1",
+    dev_dependency = True,
+)
+bazel_dep(name = "pyrefly_test_targets", version = "0.0.0", dev_dependency = True)
+bazel_dep(name = "pyrefly_testlib", version = "0.0.0", dev_dependency = True)
+
+local_path_override(
+    module_name = "pyrefly_test_targets",
+    path = "tests/external_targets",
+)
+
+local_path_override(
+    module_name = "pyrefly_testlib",
+    path = "tests/testlib",
+)
+
+bazel_binaries = use_extension(
+    "@rules_bazel_integration_test//:extensions.bzl",
+    "bazel_binaries",
+    dev_dependency = True,
+)
+bazel_binaries.download(version_file = "//:.bazelversion")
+use_repo(bazel_binaries, "bazel_binaries", "bazel_binaries_bazelisk", "build_bazel_bazel_.bazelversion")
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = "3.13.11",
+)
+
+pycross = use_extension(
+    "@rules_pycross//pycross/extensions:pycross.bzl",
+    "pycross",
+    dev_dependency = True,
+)
+pycross.configure_environments(
+    platforms = [
+        "aarch64-apple-darwin",
+        "aarch64-unknown-linux-gnu",
+        "x86_64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+    ],
+    python_versions = ["3.13.11"],
+)
+
+environments = use_extension(
+    "@rules_pycross//pycross/extensions:environments.bzl",
+    "environments",
+)
+use_repo(
+    environments,
+    pyrefly_pycross_environments = "pycross_environments",
+)
+
+lock_import = use_extension(
+    "@rules_pycross//pycross/extensions:lock_import.bzl",
+    "lock_import",
+)
+lock_import.import_uv(
+    default = True,
+    lock_file = "//:uv.lock",
+    project_file = "//:pyproject.toml",
+    repo = "pyrefly_pypi",
+)
+
+lock_repos = use_extension(
+    "@rules_pycross//pycross/extensions:lock_repos.bzl",
+    "lock_repos",
+)
+use_repo(lock_repos, "pyrefly_pypi")
+
+pyrefly = use_extension("//:pyrefly.bzl", "pyrefly", dev_dependency = True)
+pyrefly.toolchain(
+    version = "1.1.1",
+)
+use_repo(pyrefly, "pyrefly_toolchain")
+
+register_toolchains(
+    "@pyrefly_toolchain//:all",
+    dev_dependency = True,
+)
+
+register_toolchains(
+    "//tests/analysis/target_environment_toolchains:all",
+    dev_dependency = True,
+)

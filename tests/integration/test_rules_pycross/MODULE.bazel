@@ -1,0 +1,91 @@
+module(
+    name = "pyrefly_rules_pycross_fixture",
+    version = "0.0.0",
+)
+
+bazel_dep(name = "bazel_skylib", version = "1.9.0")
+bazel_dep(name = "platforms", version = "1.0.0")
+bazel_dep(name = "pyrefly.bzl", version = "0.1.0")
+
+bazel_dep(name = "pyrefly_integration_testlib", version = "0.0.0", dev_dependency = True)
+bazel_dep(name = "pyrefly_testlib", version = "0.0.0", dev_dependency = True)
+
+bazel_dep(name = "rules_pycross", version = "0.8.3")
+bazel_dep(name = "rules_python", version = "2.0.0")
+
+single_version_override(
+    module_name = "rules_pycross",
+    patch_strip = 1,
+    patches = ["//:rules_pycross_pyinfo.patch"],
+    version = "0.8.3",
+)
+
+local_path_override(
+    module_name = "pyrefly.bzl",
+    path = "../../..",
+)
+
+local_path_override(
+    module_name = "pyrefly_integration_testlib",
+    path = "../testlib",
+)
+
+local_path_override(
+    module_name = "pyrefly_testlib",
+    path = "../../testlib",
+)
+
+python = use_extension("@rules_python//python/extensions:python.bzl", "python")
+python.toolchain(
+    is_default = True,
+    python_version = "3.13.11",
+)
+
+pycross = use_extension(
+    "@rules_pycross//pycross/extensions:pycross.bzl",
+    "pycross",
+)
+pycross.configure_environments(
+    platforms = [
+        "aarch64-apple-darwin",
+        "x86_64-unknown-linux-gnu",
+    ],
+    python_versions = ["3.13.11"],
+)
+
+environments = use_extension(
+    "@rules_pycross//pycross/extensions:environments.bzl",
+    "environments",
+)
+use_repo(
+    environments,
+    integration_pycross_environments = "pycross_environments",
+)
+
+lock_import = use_extension(
+    "@rules_pycross//pycross/extensions:lock_import.bzl",
+    "lock_import",
+)
+lock_import.import_uv(
+    default = True,
+    lock_file = "//:uv.lock",
+    project_file = "//:pyproject.toml",
+    repo = "integration_pypi",
+    target_environments = [
+        "@integration_pycross_environments//:environments",
+    ],
+)
+
+lock_repos = use_extension(
+    "@rules_pycross//pycross/extensions:lock_repos.bzl",
+    "lock_repos",
+)
+use_repo(lock_repos, "integration_pypi")
+
+pyrefly = use_extension("@pyrefly.bzl", "pyrefly")
+pyrefly.toolchain(
+    version = "1.1.1",
+)
+use_repo(pyrefly, "pyrefly_toolchain")
+
+register_toolchains("@pyrefly_toolchain//:all")

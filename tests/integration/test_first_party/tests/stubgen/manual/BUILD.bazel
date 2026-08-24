@@ -1,0 +1,29 @@
+load("@pyrefly.bzl", "pyrefly_stubs")
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_test")
+
+py_library(
+    name = "library",
+    testonly = True,
+    srcs = ["fixture.py"],
+)
+
+pyrefly_check_test(
+    name = "check_test",
+    target = ":library",
+)
+
+pyrefly_stubs(
+    name = "stubs",
+    testonly = True,
+    configuration = "//:pyrefly_config",
+    library = ":library",
+)
+
+pytest_test(
+    name = "output_test",
+    srcs = ["output_test.py"],
+    data = [":stubs"],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)

@@ -1,0 +1,19 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+exports_files([
+    "pytest.bzl",
+])
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "runfiles",
+    testonly = True,
+    srcs = glob(["pyrefly_testlib/*.py"]),
+    imports = ["."],
+    visibility = ["//visibility:public"],
+)

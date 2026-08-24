@@ -1,0 +1,8 @@
+[project]
+name = "ignored-project-metadata"
+
+[tool.pyrefly]
+ignore-missing-imports = true
+
+[tool.unrelated]
+enabled = true

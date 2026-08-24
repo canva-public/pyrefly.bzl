@@ -1,0 +1,47 @@
+load("@bazel_skylib//:bzl_library.bzl", "bzl_library")
+load("//:pyrefly.bzl", "pyrefly_configuration")
+
+pyrefly_configuration(
+    name = "pyrefly_config",
+    config = "//:pyproject.toml",
+    exclude_tags = [
+        "skip-pyrefly",
+        "skip-pyrefly-too",
+    ],
+    expected_failures = [
+        "//tests/consumer:expected_failure",
+        "//tests/consumer:stale_expected_failure",
+    ],
+    stale_message = """\
+Pyrefly passed on target `%s`, but it is listed in the expected failures. Run the following command to remove it:
+    sed -i '\\|%s|d' tools/pyrefly/BUILD.bazel""",
+    stub_packages = {
+        "@pyrefly_test_targets//:configured": "@pyrefly_test_targets//:configured_stubs",
+    },
+    stubgen_exclude = [
+        "@pyrefly_test_targets//:skipped_alias",
+        "@pyrefly_test_targets//:nested_package",
+    ],
+    stubgen_include = [
+        "@pyrefly_test_targets//:automatic_alias",
+        "@pyrefly_test_targets//:configured_alias",
+        "@pyrefly_test_targets//:nested_packages",
+        "@pyrefly_test_targets//:skipped_alias",
+    ],
+    stubgen_include_docstrings = True,
+    stubgen_include_private = True,
+    visibility = ["//visibility:public"],
+)
+
+bzl_library(
+    name = "pyrefly_aspects_bzl",
+    srcs = ["pyrefly_aspects.bzl"],
+    visibility = ["//:__subpackages__"],
+    deps = ["//:defs"],
+)
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//:__subpackages__"],
+)

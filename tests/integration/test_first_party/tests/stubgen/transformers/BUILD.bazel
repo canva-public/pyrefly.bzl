@@ -1,0 +1,28 @@
+load("@pyrefly.bzl", "pyrefly_stubs")
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "library",
+    testonly = True,
+    srcs = glob(["site-packages/transformers/*.py"]),
+    imports = ["site-packages"],
+)
+
+pyrefly_stubs(
+    name = "stubs",
+    testonly = True,
+    configuration = "//:pyrefly_config",
+    include_private = True,
+    library = ":library",
+)
+
+pytest_test(
+    name = "output_test",
+    srcs = ["output_test.py"],
+    data = [
+        "expected/trainer.pyi.golden",
+        ":stubs",
+    ],
+    deps = ["@pyrefly_testlib//:runfiles"],
+)

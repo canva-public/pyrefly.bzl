@@ -1,0 +1,65 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+filegroup(
+    name = "all_files",
+    srcs = glob(["**"]),
+    visibility = ["//visibility:public"],
+)
+
+package_group(
+    name = "nested_packages",
+    packages = ["//nested/..."],
+)
+
+package_group(
+    name = "nested_package",
+    packages = ["//nested"],
+)
+
+py_library(
+    name = "configured",
+    srcs = ["configured.py"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "configured_alias",
+    actual = ":configured",
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "configured_stubs",
+    pyi_srcs = ["configured.pyi"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "unmatched",
+    srcs = ["unmatched.py"],
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "skipped",
+    srcs = ["skipped.py"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "skipped_alias",
+    actual = ":skipped",
+    visibility = ["//visibility:public"],
+)
+
+py_library(
+    name = "automatic",
+    srcs = ["automatic.py"],
+    visibility = ["//visibility:public"],
+)
+
+alias(
+    name = "automatic_alias",
+    actual = ":automatic",
+    visibility = ["//visibility:public"],
+)

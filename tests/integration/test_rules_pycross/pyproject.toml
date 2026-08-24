@@ -1,0 +1,12 @@
+[project]
+name = "rules-pycross-integration"
+version = "0.0.0"
+requires-python = ">=3.11"
+dependencies = [
+  "google-auth==2.56.3",
+  "googleapis-common-protos==1.75.1",
+  "grpcio==1.82.1",
+  "types-grpcio==1.82.1.20260724",
+]
+
+[tool.pyrefly]
