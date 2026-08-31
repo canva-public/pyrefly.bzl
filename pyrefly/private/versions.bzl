@@ -34,6 +34,12 @@ PYREFLY_PLATFORMS = {
 }
 
 PYREFLY_RELEASES = {
+    "1.3.0-dev.3": {
+        "linux_aarch64": "2f6f936a401f6aee1ddb39a5a9c651d398cb57562886de372521f796be5aaaeb",
+        "linux_x86_64": "c542b6beb5a96d40d868690a34f8c9827c4b451186514ce09ee20fc26b512275",
+        "macos_aarch64": "681e6bfe2d459e7e9324dc268fd37816b07b6ddeab18a26a874c85483af15024",
+        "macos_x86_64": "bcfdbcb5a15e454366d0c3b0fa202f24a624aa1855e0d9fbaa9f04bd3eba5143",
+    },
     "1.3.0-dev.2": {
         "linux_aarch64": "0fb1d18fe63e8249bc75cfdd8ddb3d26f4a376c2ae29f0daa060a7a000ec933d",
         "linux_x86_64": "b3764af4fb8a957aa052fe73d83bd36f33d3b19935adcd9e41828406b8851bea",
