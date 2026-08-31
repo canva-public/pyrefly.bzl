@@ -27,7 +27,8 @@ def create_pyrefly_stubgen_action(
         include_private = False,
         dependency_info = None,
         mapped_stub = None,
-        output_name = None):
+        output_name = None,
+        repository_root = None):
     """Register a stubgen action for a Python target and return its TreeArtifact."""
     output = ctx.actions.declare_directory(
         output_name or target.label.name + "_pyrefly_stubs",
@@ -81,7 +82,7 @@ def create_pyrefly_stubgen_action(
     args.add("--input-root")
     args.add(".")
     args.add("--repository-root")
-    args.add(target.label.workspace_root or ".")
+    args.add(repository_root or target.label.workspace_root or ".")
     if retain_repository_root:
         args.add("--retain-repository-root")
     args.add_all(

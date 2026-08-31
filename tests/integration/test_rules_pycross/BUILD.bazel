@@ -11,9 +11,9 @@ pyrefly_configuration(
     name = "pyrefly_config",
     config = ":pyproject.toml",
     stub_packages = {
-        "@integration_pypi//:grpcio": "@integration_pypi//:types-grpcio",
+        "@integration_pypi//grpcio": "@integration_pypi//types_grpcio",
     },
-    stubgen_exclude = ["@integration_pypi//:google-auth"],
+    stubgen_exclude = ["@integration_pypi//google_auth"],
     stubgen_include = [":pypi_packages"],
     visibility = ["//visibility:public"],
 )

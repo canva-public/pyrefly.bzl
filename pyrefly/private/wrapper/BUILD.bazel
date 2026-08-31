@@ -20,7 +20,7 @@ py_library(
     imports = ["../../.."],
     visibility = ["//visibility:public"],
     deps = [
-        "@pyrefly_pypi//:simple-parsing",
-        "@pyrefly_pypi//:tomli-w",
+        "@pyrefly_pypi//simple_parsing",
+        "@pyrefly_pypi//tomli_w",
     ],
 )

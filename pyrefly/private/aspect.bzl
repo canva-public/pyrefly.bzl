@@ -63,6 +63,15 @@ def _should_stubgen(config, label):
         return False
     return _matches_stubgen_selectors(config.stubgen_include, label)
 
+def _source_repository_root(target, ctx):
+    """Resolve sources forwarded by a rules_pycross v2 proxy from its actual target."""
+    actual = getattr(ctx.rule.attr, "actual", None)
+    if type(actual) == "list":
+        actual = actual[0] if actual else None
+    if actual != None and PyInfo in actual:
+        return actual.label.workspace_root or "."
+    return target.label.workspace_root or "."
+
 def _aspect_impl(target, ctx):
     check_sources = _check_sources(ctx)
     supplementary_data_inputs = _supplementary_data_inputs(ctx)
@@ -120,6 +129,7 @@ def _aspect_impl(target, ctx):
         target.label.repo_name == _MAIN_REPOSITORY or
         ctx.attr._python_import_all_repositories[BuildSettingInfo].value
     )
+    source_repository_root = _source_repository_root(target, ctx)
 
     if _should_stubgen(config, target.label):
         transformed = create_pyrefly_stubgen_action(
@@ -134,6 +144,7 @@ def _aspect_impl(target, ctx):
             include_private = config.stubgen_include_private,
             dependency_info = dependency_info,
             mapped_stub = configured_stub,
+            repository_root = source_repository_root,
             target_inputs = target_inputs,
         )
     else:
@@ -145,6 +156,7 @@ def _aspect_impl(target, ctx):
             target_inputs,
             retain_repository_root,
             mapped_stub = configured_stub,
+            repository_root = source_repository_root,
         )
 
     info = PyreflyInfo(

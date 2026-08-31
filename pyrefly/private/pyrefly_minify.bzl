@@ -9,7 +9,8 @@ def create_pyrefly_minify_action(
         log_level,
         target_inputs,
         retain_repository_root,
-        mapped_stub = None):
+        mapped_stub = None,
+        repository_root = None):
     """Copy a target's type-relevant files into a compact TreeArtifact."""
     if mapped_stub == None:
         mapped_stub = config.stub_packages.get(str(target.label))
@@ -32,7 +33,7 @@ def create_pyrefly_minify_action(
     args.add("--input-root")
     args.add(".")
     args.add("--repository-root")
-    args.add(target.label.workspace_root or ".")
+    args.add(repository_root or target.label.workspace_root or ".")
     if retain_repository_root:
         args.add("--retain-repository-root")
     args.add_all(
