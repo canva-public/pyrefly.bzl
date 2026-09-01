@@ -62,6 +62,12 @@ def _mapped_stub_aspect_impl(target, ctx):
         if _MappedStubInfo in dependency:
             dependency_files.append(dependency[_MappedStubInfo].all_files)
             dependency_imports.append(dependency[_MappedStubInfo].all_imports)
+    actual = getattr(ctx.rule.attr, "actual", None)
+    actual_targets = actual if type(actual) == "list" else [actual] if actual != None else []
+    for dependency in actual_targets:
+        if _MappedStubInfo in dependency:
+            dependency_files.append(dependency[_MappedStubInfo].dependency_files)
+            dependency_imports.append(dependency[_MappedStubInfo].dependency_imports)
 
     direct_files = depset(transitive = direct_files)
     dependency_files = depset(transitive = dependency_files)
@@ -84,6 +90,7 @@ def _mapped_stub_aspect_impl(target, ctx):
 _mapped_stub_aspect = aspect(
     implementation = _mapped_stub_aspect_impl,
     attr_aspects = [
+        "actual",
         "deps",
         "pyi_deps",
     ],

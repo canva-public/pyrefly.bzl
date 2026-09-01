@@ -18,6 +18,22 @@ MAPPED_STUB_ROOT = Path(".pyrefly-mapped-stubs")
 MAPPED_STUB_DEPENDENCY_ROOT = Path(".pyrefly-mapped-stub-dependencies")
 
 
+def is_repository_path(
+    path: Path,
+    repository_root: Path,
+    bazel_bin_dir: Path,
+) -> bool:
+    """Whether a path belongs to the source or generated repository root."""
+    absolute = path.absolute()
+    return any(
+        absolute == root or absolute.is_relative_to(root)
+        for root in (
+            (bazel_bin_dir / repository_root).absolute(),
+            repository_root.absolute(),
+        )
+    )
+
+
 def repository_path(
     path: Path,
     repository_root: Path,

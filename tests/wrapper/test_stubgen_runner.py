@@ -69,6 +69,26 @@ def test_workspace_source_generates_stub_from_input_root(tmp_path: Path) -> None
     assert transformed_import_roots(args.output_dir) == [args.output_dir]
 
 
+def test_stubgen_skips_sources_outside_repository_root(tmp_path: Path) -> None:
+    """Stub generation ignores forwarded sources owned by another repository."""
+    repository = tmp_path / "public"
+    repository.mkdir()
+    outside_root = tmp_path / "backing" / "site-packages"
+    source = outside_root / "sample" / "__init__.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("value = 1\n")
+    args = replace(
+        _args(tmp_path, [outside_root]),
+        import_path=[outside_root],
+        repository_root=repository,
+        retain_repository_root=False,
+    )
+
+    assert stubgen_runner.run(args) == 0
+    assert not (args.output_dir / "site-packages" / "sample").exists()
+    assert transformed_import_roots(args.output_dir) == []
+
+
 def test_dependency_imports_resolve_through_effective_config(tmp_path: Path) -> None:
     """Dependency stubs inform the types emitted for a target module."""
     dependency = tmp_path / "dependencies" / "dependency"

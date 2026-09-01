@@ -1,0 +1,14 @@
+load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_test")
+
+py_library(
+    name = "consumer",
+    testonly = True,
+    srcs = ["consumer.py"],
+    deps = ["@integration_pypi//pydantic"],
+)
+
+pyrefly_check_test(
+    name = "transitive_package_is_available_test",
+    target = ":consumer",
+)

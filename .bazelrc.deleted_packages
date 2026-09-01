@@ -21,3 +21,5 @@ common --deleted_packages=tests/integration/test_rules_pycross
 common --deleted_packages=tests/integration/test_rules_pycross/testlib
 common --deleted_packages=tests/integration/test_rules_pycross/tests/google_namespace
 common --deleted_packages=tests/integration/test_rules_pycross/tests/grpcio_stub_mapping
+common --deleted_packages=tests/integration/test_rules_pycross/tests/mapped_stub_actual_dependency
+common --deleted_packages=tests/integration/test_rules_pycross/tests/transitive_actual_dependency
