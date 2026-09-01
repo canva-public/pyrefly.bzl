@@ -12,7 +12,7 @@ competing ruleset.
 Register the Pyrefly toolchain in a `MODULE.bazel` file:
 
 ```starlark
-bazel_dep(name = "pyrefly.bzl", version = "0.1.0")
+bazel_dep(name = "pyrefly.bzl", version = "0.2.0")
 
 pyrefly = use_extension("@pyrefly.bzl", "pyrefly")
 pyrefly.toolchain(version = "1.1.1")
