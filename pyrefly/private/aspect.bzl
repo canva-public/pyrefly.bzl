@@ -63,6 +63,20 @@ def _should_stubgen(config, label):
         return False
     return _matches_stubgen_selectors(config.stubgen_include, label)
 
+def _actual_targets(ctx):
+    """Return backing targets from a rules_pycross proxy's actual attribute."""
+    actual = getattr(ctx.rule.attr, "actual", None)
+    if actual == None:
+        return []
+    return actual if type(actual) == "list" else [actual]
+
+def _forwarded_source_repository_root(actual_targets, default):
+    """Resolve the owner of DefaultInfo sources forwarded by a rules_pycross proxy."""
+    for actual in actual_targets:
+        if PyInfo in actual:
+            return actual.label.workspace_root or "."
+    return default
+
 def _aspect_impl(target, ctx):
     check_sources = _check_sources(ctx)
     supplementary_data_inputs = _supplementary_data_inputs(ctx)
@@ -70,6 +84,7 @@ def _aspect_impl(target, ctx):
         getattr(ctx.rule.attr, "deps", []) +
         getattr(ctx.rule.attr, "pyi_deps", [])
     )
+    actual_targets = _actual_targets(ctx)
 
     transitive_sources = []
     transitive_imports = []
@@ -81,6 +96,13 @@ def _aspect_impl(target, ctx):
             transitive_imports.append(info.imports)
         if OutputGroupInfo in dependency and hasattr(dependency[OutputGroupInfo], "_validation"):
             transitive_validation.append(dependency[OutputGroupInfo]._validation)
+    for actual in actual_targets:
+        if PyreflyCheckInputsInfo in actual:
+            info = actual[PyreflyCheckInputsInfo].dependency_info
+            transitive_sources.append(info.sources)
+            transitive_imports.append(info.imports)
+        if OutputGroupInfo in actual and hasattr(actual[OutputGroupInfo], "_validation"):
+            transitive_validation.append(actual[OutputGroupInfo]._validation)
 
     dependency_info = PyreflyInfo(
         imports = depset(transitive = transitive_imports),
@@ -90,6 +112,7 @@ def _aspect_impl(target, ctx):
     direct_original_sources = target[PyInfo].direct_original_sources
     direct_pyi_files = target[PyInfo].direct_pyi_files
     target_imports = target[PyInfo].imports
+    source_repository_root = target.label.workspace_root or "."
     if direct_original_sources or direct_pyi_files:
         target_inputs = depset(
             direct = supplementary_data_inputs,
@@ -104,6 +127,10 @@ def _aspect_impl(target, ctx):
             target_inputs = depset(fallback_inputs + supplementary_data_inputs)
         elif DefaultInfo in target:
             target_inputs = target[DefaultInfo].files
+            source_repository_root = _forwarded_source_repository_root(
+                actual_targets,
+                source_repository_root,
+            )
         else:
             target_inputs = depset(supplementary_data_inputs)
 
@@ -120,7 +147,6 @@ def _aspect_impl(target, ctx):
         target.label.repo_name == _MAIN_REPOSITORY or
         ctx.attr._python_import_all_repositories[BuildSettingInfo].value
     )
-
     if _should_stubgen(config, target.label):
         transformed = create_pyrefly_stubgen_action(
             ctx,
@@ -134,6 +160,7 @@ def _aspect_impl(target, ctx):
             include_private = config.stubgen_include_private,
             dependency_info = dependency_info,
             mapped_stub = configured_stub,
+            repository_root = source_repository_root,
             target_inputs = target_inputs,
         )
     else:
@@ -145,6 +172,7 @@ def _aspect_impl(target, ctx):
             target_inputs,
             retain_repository_root,
             mapped_stub = configured_stub,
+            repository_root = source_repository_root,
         )
 
     info = PyreflyInfo(
@@ -251,6 +279,7 @@ def make_pyrefly_aspect(configuration):
     return aspect(
         implementation = _aspect_impl,
         attr_aspects = [
+            "actual",
             "deps",
             "pyi_deps",
         ],

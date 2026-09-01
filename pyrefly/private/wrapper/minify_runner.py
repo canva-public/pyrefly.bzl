@@ -17,6 +17,7 @@ from .source_utils import (
 )
 from .transformed import (
     finalize_transformed_tree,
+    is_repository_path,
     repository_relative_path,
 )
 
@@ -32,7 +33,15 @@ def run(args: MinifyOptions) -> int:
     direct_inputs = args.direct_inputs()
     mapped_stub_context = args.mapped_stub_context()
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    files = collect_type_relevant_files(direct_inputs.paths)
+    files = [
+        source
+        for source in collect_type_relevant_files(direct_inputs.paths)
+        if is_repository_path(
+            source,
+            args.repository_root,
+            args.bazel_bin_dir,
+        )
+    ]
     source_layout = resolve_source_layout(
         files,
         direct_inputs.import_roots,

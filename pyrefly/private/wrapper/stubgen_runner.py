@@ -28,6 +28,7 @@ from .source_utils import (
 )
 from .transformed import (
     finalize_transformed_tree,
+    is_repository_path,
     repository_relative_path,
 )
 from .utils import (
@@ -62,7 +63,15 @@ def run(args: StubgenOptions) -> int:
         stubgen_flags.append("--include-private")
     executable = resolve_executable(args.pyrefly_executable)
     args.output_dir.mkdir(parents=True, exist_ok=True)
-    direct_files = collect_type_relevant_files(direct_inputs.paths)
+    direct_files = [
+        source
+        for source in collect_type_relevant_files(direct_inputs.paths)
+        if is_repository_path(
+            source,
+            args.repository_root,
+            args.bazel_bin_dir,
+        )
+    ]
     direct_layout = resolve_source_layout(
         direct_files,
         direct_inputs.import_roots,

@@ -7,8 +7,8 @@ py_library(
     testonly = True,
     srcs = ["consumer.py"],
     deps = [
-        "@integration_pypi//:google-auth",
-        "@integration_pypi//:googleapis-common-protos",
+        "@integration_pypi//google_auth",
+        "@integration_pypi//googleapis_common_protos",
     ],
 )
 

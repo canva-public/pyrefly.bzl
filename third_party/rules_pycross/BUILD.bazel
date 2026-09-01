@@ -1,7 +1,0 @@
-exports_files(["rules_pycross_pyinfo.patch"])
-
-filegroup(
-    name = "all_files",
-    srcs = glob(["**"]),
-    visibility = ["//:__subpackages__"],
-)

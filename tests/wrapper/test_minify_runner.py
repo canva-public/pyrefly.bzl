@@ -70,6 +70,29 @@ def test_minify_can_expose_an_external_repository_root(tmp_path: Path) -> None:
     ]
 
 
+def test_minify_skips_sources_outside_repository_root(tmp_path: Path) -> None:
+    """Minification ignores forwarded sources owned by another repository."""
+    repository = tmp_path / "public"
+    repository.mkdir()
+    outside_root = tmp_path / "backing" / "site-packages"
+    source = outside_root / "sample" / "__init__.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("value = 1\n")
+    output = tmp_path / "output"
+    args = cli.MinifyOptions(
+        output_dir=output,
+        bazel_bin_dir=tmp_path / "bin",
+        repository_root=repository,
+        import_path=[outside_root],
+        input_root=tmp_path,
+        input_path=[outside_root],
+    )
+
+    assert minify_runner.run(args) == 0
+    assert not (output / "site-packages" / "sample").exists()
+    assert transformed_import_roots(output) == []
+
+
 def test_minify_combines_partial_mapped_stubs_with_runtime_gaps(
     tmp_path: Path,
 ) -> None:

@@ -45,7 +45,6 @@ filegroup(
         "//tests/external_targets/nested/deeper:all_files",
         "//tests/integration/testlib:all_files",
         "//tests/testlib:all_files",
-        "//third_party/rules_pycross:all_files",
         "//tools/pyrefly:all_files",
     ],
     visibility = ["//:__subpackages__"],

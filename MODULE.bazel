@@ -6,17 +6,11 @@ module(
 bazel_dep(name = "rules_python", version = "2.0.0")
 bazel_dep(name = "bazel_skylib", version = "1.9.0")
 bazel_dep(name = "platforms", version = "1.0.0")
-bazel_dep(name = "rules_pycross", version = "0.8.3")
-single_version_override(
-    module_name = "rules_pycross",
-    patch_strip = 1,
-    patches = ["//third_party/rules_pycross:rules_pycross_pyinfo.patch"],
-    version = "0.8.3",
-)
+bazel_dep(name = "rules_pycross", version = "2.0.0-alpha.2")
 
 bazel_dep(name = "rules_shell", version = "0.8.0", dev_dependency = True)
 bazel_dep(name = "rules_testing", version = "0.9.0", dev_dependency = True)
-bazel_dep(name = "bazel_lib", version = "3.1.0", dev_dependency = True)
+bazel_dep(name = "bazel_lib", version = "3.2.0", dev_dependency = True)
 bazel_dep(name = "stardoc", version = "0.8.1", dev_dependency = True)
 bazel_dep(
     name = "rules_bazel_integration_test",
@@ -55,7 +49,7 @@ pycross = use_extension(
     "pycross",
     dev_dependency = True,
 )
-pycross.configure_environments(
+pycross.configure_toolchains(
     platforms = [
         "aarch64-apple-darwin",
         "aarch64-unknown-linux-gnu",
@@ -65,31 +59,18 @@ pycross.configure_environments(
     python_versions = ["3.13.11"],
 )
 
-environments = use_extension(
-    "@rules_pycross//pycross/extensions:environments.bzl",
-    "environments",
+uv = use_extension(
+    "@rules_pycross//pycross/extensions:uv.bzl",
+    "uv",
 )
-use_repo(
-    environments,
-    pyrefly_pycross_environments = "pycross_environments",
-)
-
-lock_import = use_extension(
-    "@rules_pycross//pycross/extensions:lock_import.bzl",
-    "lock_import",
-)
-lock_import.import_uv(
-    default = True,
+uv.workspace(
+    name = "pyrefly_pypi",
     lock_file = "//:uv.lock",
-    project_file = "//:pyproject.toml",
-    repo = "pyrefly_pypi",
 )
-
-lock_repos = use_extension(
-    "@rules_pycross//pycross/extensions:lock_repos.bzl",
-    "lock_repos",
+uv.repo(
+    workspace = "pyrefly_pypi",
 )
-use_repo(lock_repos, "pyrefly_pypi")
+use_repo(uv, "pyrefly_pypi")
 
 pyrefly = use_extension("//:pyrefly.bzl", "pyrefly", dev_dependency = True)
 pyrefly.toolchain(

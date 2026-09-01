@@ -6,7 +6,7 @@ py_library(
     name = "consumer",
     testonly = True,
     srcs = ["consumer.py"],
-    deps = ["@integration_pypi//:grpcio"],
+    deps = ["@integration_pypi//grpcio"],
 )
 
 pyrefly_check_test(
@@ -25,7 +25,7 @@ pytest_test(
     srcs = ["output_test.py"],
     data = [
         ":inputs",
-        "@integration_pypi//:types-grpcio",
+        "@integration_pypi//types_grpcio",
     ],
     deps = ["@pyrefly_testlib//:runfiles"],
 )
