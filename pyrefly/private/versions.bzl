@@ -34,6 +34,18 @@ PYREFLY_PLATFORMS = {
 }
 
 PYREFLY_RELEASES = {
+    "1.3.0": {
+        "linux_aarch64": "954833c74958d844139e02bf0d240aa05cd96c231086069d00658a3aebad44bf",
+        "linux_x86_64": "97586de84f392a9c2220fdded4ae58a1528e939bff237a0693be140843e6969f",
+        "macos_aarch64": "c15ad88f494c03e434290a7a22ada4028a184f5f9140e2e869b6cd6eea3637c8",
+        "macos_x86_64": "f82c8dae0975ef3929636df20cff02294b0be80bda9825910f1e3164954b9aef",
+    },
+    "1.3.0-dev.4": {
+        "linux_aarch64": "f2d08e09fcb74eec6d7b2d1a5740b77d271be5965acb4033731e622321bf9a98",
+        "linux_x86_64": "24cd4be5721bd01daa95e34cbed7502f003dc3c3649f8864342b9c9befdb5bed",
+        "macos_aarch64": "6cd629369ef31c712c43cb2dca2843cbefd6939c114b72ec4d4fb09f290d4909",
+        "macos_x86_64": "a7b007399c16a8ff8334938076dd5c7f3a0d45a4a9ca13cd0cfce7f425ad966d",
+    },
     "1.3.0-dev.3": {
         "linux_aarch64": "2f6f936a401f6aee1ddb39a5a9c651d398cb57562886de372521f796be5aaaeb",
         "linux_x86_64": "c542b6beb5a96d40d868690a34f8c9827c4b451186514ce09ee20fc26b512275",
