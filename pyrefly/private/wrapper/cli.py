@@ -9,6 +9,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Literal
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
 from simple_parsing import ArgumentParser, field
 from simple_parsing.wrappers import DashVariant
 
@@ -21,9 +23,11 @@ from . import (
     update_baseline_runner,
 )
 from .input_context import DependencyContext, DirectInputs, MappedStubContext
+from .tracing import configure_tracing
 from .utils import INFRASTRUCTURE_EXIT_CODE, WrapperError
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -36,6 +40,7 @@ class BaseOptions:
         "critical",
     ] = "error"
     log_file: Path | None = None
+    otlp_trace_output: Path | None = None
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -268,7 +273,16 @@ def main(argv: list[str] | None = None) -> int:
     try:
         args = create_parser().parse_args(argv)
         _setup_logging(args.options)
-        return args.handler(args.options)
+        configure_tracing(args.options.otlp_trace_output)
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{args.command}",
+            attributes={"pyrefly.wrapper.operation": args.command},
+        ) as span:
+            exit_code = args.handler(args.options)
+            span.set_attribute("pyrefly.wrapper.exit_code", exit_code)
+            if exit_code != 0:
+                span.set_status(Status(StatusCode.ERROR))
+            return exit_code
     except (WrapperError, ValueError) as error:
         logger.exception("Pyrefly wrapper infrastructure failure: %s", error)
         return INFRASTRUCTURE_EXIT_CODE

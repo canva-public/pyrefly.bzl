@@ -5,6 +5,8 @@ from __future__ import annotations
 import logging
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+
 from . import check_runner
 from .utils import INFRASTRUCTURE_EXIT_CODE, CommandTimeout, WrapperError
 
@@ -12,12 +14,14 @@ if TYPE_CHECKING:
     from .cli import UpdateBaselineOptions
 
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def run(args: UpdateBaselineOptions) -> int:
     """Generate a complete baseline without reading an existing baseline."""
-    args.output_baseline.parent.mkdir(parents=True, exist_ok=True)
-    args.output_baseline.unlink(missing_ok=True)
+    with tracer.start_as_current_span("pyrefly.wrapper.update-baseline.prepare-output"):
+        args.output_baseline.parent.mkdir(parents=True, exist_ok=True)
+        args.output_baseline.unlink(missing_ok=True)
     try:
         result = check_runner.invoke(
             args,
@@ -33,7 +37,10 @@ def run(args: UpdateBaselineOptions) -> int:
         return INFRASTRUCTURE_EXIT_CODE
 
     if result is None:
-        args.output_baseline.write_text('{\n  "errors": []\n}\n')
+        with tracer.start_as_current_span(
+            "pyrefly.wrapper.update-baseline.write-empty-output"
+        ):
+            args.output_baseline.write_text('{\n  "errors": []\n}\n')
         return 0
     if result.output:
         logger.debug(result.output.rstrip("\n"))
@@ -44,8 +51,11 @@ def run(args: UpdateBaselineOptions) -> int:
             result.returncode,
         )
         return INFRASTRUCTURE_EXIT_CODE
-    if not args.output_baseline.is_file():
-        raise WrapperError(
-            f"Pyrefly did not produce baseline output for {args.target_label}"
-        )
+    with tracer.start_as_current_span(
+        "pyrefly.wrapper.update-baseline.validate-output"
+    ):
+        if not args.output_baseline.is_file():
+            raise WrapperError(
+                f"Pyrefly did not produce baseline output for {args.target_label}"
+            )
     return 0

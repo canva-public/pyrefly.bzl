@@ -168,6 +168,11 @@ target still receives stubgen or minify so it remains usable as a dependency.
 wrapper invocations can additionally supply a log file. Failures include tracebacks when wrapper
 infrastructure itself raises an exception.
 
+Each wrapper subcommand records a root OpenTelemetry span plus nested spans for its internal phases
+and subprocess calls in a declared OTLP/JSON Lines output. Spans include work-unit counts where
+relevant, and subprocess spans include their timeout and exit code. The aspect exposes traces from
+wrapper actions created directly for the target through the `pyrefly_otlp_traces` output group.
+
 The wrapper requires Python 3.11 or newer. It does not import Pyrefly as a Python package; the
 configured executable is always invoked as a separate process.
 

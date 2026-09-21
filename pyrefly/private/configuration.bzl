@@ -1,6 +1,7 @@
 """Configured Pyrefly state shared by every application of the aspect."""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
+load(":otlp.bzl", "declare_otlp_trace")
 load(
     ":providers.bzl",
     "PyreflyBaselinesInfo",
@@ -118,9 +119,9 @@ def _stubgen_selectors(targets):
 def _extract_base_config(ctx, wrapper):
     config = ctx.file.config
     if not config:
-        return None
+        return struct(config = None, otlp_traces = depset())
     if config.basename == "pyrefly.toml":
-        return config
+        return struct(config = config, otlp_traces = depset())
     if config.basename != "pyproject.toml":
         fail(
             "pyrefly_configuration(config = ...) must name pyrefly.toml or " +
@@ -136,16 +137,21 @@ def _extract_base_config(ctx, wrapper):
     args.add(config)
     args.add("--output-config")
     args.add(output)
+    otlp_trace = declare_otlp_trace(
+        ctx,
+        args,
+        ctx.label.name + "_pyrefly_extract_config",
+    )
     ctx.actions.run(
         executable = wrapper,
         arguments = [args],
         inputs = [config],
-        outputs = [output],
+        outputs = [output, otlp_trace],
         mnemonic = "PyreflyExtractConfig",
         progress_message = "Extracting Pyrefly configuration from %{input}",
         use_default_shell_env = True,
     )
-    return output
+    return struct(config = output, otlp_traces = depset([otlp_trace]))
 
 def _target_environment(ctx):
     toolchain = ctx.toolchains[_PYTHON_TOOLCHAIN_TYPE]
@@ -193,7 +199,8 @@ def _configuration_impl(ctx):
         fail("stub_package_keys and stub_package_values must contain the same number of entries")
 
     wrapper = ctx.attr._wrapper[DefaultInfo].files_to_run
-    base_config = _extract_base_config(ctx, wrapper)
+    extracted_config = _extract_base_config(ctx, wrapper)
+    base_config = extracted_config.config
 
     stub_packages = {}
     for index in range(len(ctx.attr.stub_package_values)):
@@ -234,6 +241,7 @@ def _configuration_impl(ctx):
             stubgen_include_private = ctx.attr.stubgen_include_private,
             wrapper = wrapper,
         ),
+        OutputGroupInfo(pyrefly_otlp_traces = extracted_config.otlp_traces),
         _target_environment(ctx),
     ]
 

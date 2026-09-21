@@ -1,6 +1,7 @@
 """Construction of the per-target Pyrefly check action."""
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
+load(":otlp.bzl", "declare_otlp_trace")
 load(":providers.bzl", "PyreflyConfigInfo")
 
 def _fixed_args(ctx, target, pyrefly, target_environment, command):
@@ -73,6 +74,12 @@ def create_pyrefly_check_action(
         check_outputs.append(warning_output)
 
     fixed_args = _fixed_args(ctx, target, pyrefly, target_environment, "check")
+    check_trace = declare_otlp_trace(
+        ctx,
+        fixed_args,
+        target.label.name + "_pyrefly_check",
+    )
+    check_outputs.append(check_trace)
     fixed_args.add("--output-marker")
     fixed_args.add(marker)
     if expected_to_fail:
@@ -121,18 +128,27 @@ def create_pyrefly_check_action(
         display_args.add(display_marker)
         display_args.add("--warning-file")
         display_args.add(warning_output)
+        display_trace = declare_otlp_trace(
+            ctx,
+            display_args,
+            target.label.name + "_pyrefly_display_warnings",
+        )
 
         ctx.actions.run(
             executable = config.wrapper,
             arguments = [display_args],
             inputs = [warning_output],
-            outputs = [display_marker],
+            outputs = [display_marker, display_trace],
             mnemonic = "PyreflyDisplayWarnings",
             progress_message = "Displaying Pyrefly warnings for %{label}",
         )
         warnings = depset([display_marker])
+        otlp_traces = [check_trace, display_trace]
+    else:
+        otlp_traces = [check_trace]
 
     return struct(
+        otlp_traces = otlp_traces,
         validation = depset([marker], transitive = transitive_validation),
         warnings = warnings,
     )
@@ -159,6 +175,11 @@ def create_pyrefly_update_baseline_action(
         target_environment,
         "update-baseline",
     )
+    otlp_trace = declare_otlp_trace(
+        ctx,
+        fixed_args,
+        target.label.name + "_pyrefly_update_baseline",
+    )
     fixed_args.add("--output-baseline")
     fixed_args.add(output)
     if config.base_config:
@@ -179,10 +200,10 @@ def create_pyrefly_update_baseline_action(
         inputs = depset(
             transitive = _common_inputs(config, target_inputs, dependency_info),
         ),
-        outputs = [output],
+        outputs = [output, otlp_trace],
         mnemonic = "PyreflyUpdateBaseline",
         progress_message = "Updating Pyrefly baseline for %{label}",
         tools = [pyrefly],
         use_default_shell_env = True,
     )
-    return output
+    return struct(output = output, otlp_trace = otlp_trace)
