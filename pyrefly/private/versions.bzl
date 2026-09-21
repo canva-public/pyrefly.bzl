@@ -34,6 +34,18 @@ PYREFLY_PLATFORMS = {
 }
 
 PYREFLY_RELEASES = {
+    "1.4.0-dev.1": {
+        "linux_aarch64": "132b8866599ccd6cddc3b58883402902e82550f46883f82000027334654ef9a1",
+        "linux_x86_64": "38c9c9142d25fa694048f852a2fd34ef86e8a197fa613cc19c80b50485e964bd",
+        "macos_aarch64": "302634489d10df03c834ed69c173abb7cfd3ce1a5cf0ca5b7a503abcbc0156cb",
+        "macos_x86_64": "075ed7c6404e6684a89fa78421b0af5e5cd3f4796523e618b9d1fba9e8d1936c",
+    },
+    "1.3.1": {
+        "linux_aarch64": "c7770869c96bb3dfa4c39c30b644e1d4c61e8f8645069ebf2dac117c34cb9cd1",
+        "linux_x86_64": "4859097cc9b00b8719993dc8228d2bffcc8659414d32494bb752ccf9d535dc21",
+        "macos_aarch64": "3c7294e86efb53d6bc46619fd17002266731a79894a668b8e9db2ec189e746d2",
+        "macos_x86_64": "497d5743ff54f1b4a444f72a4147d7b85fa8cf20bf87123304b00b6173254545",
+    },
     "1.3.0": {
         "linux_aarch64": "954833c74958d844139e02bf0d240aa05cd96c231086069d00658a3aebad44bf",
         "linux_x86_64": "97586de84f392a9c2220fdded4ae58a1528e939bff237a0693be140843e6969f",
@@ -63,6 +75,12 @@ PYREFLY_RELEASES = {
         "linux_x86_64": "fcaf7a982a36535476f3c5065b5843b5ea5a4d52c812bba1c08a0a56297285ba",
         "macos_aarch64": "4f3ed20b85347aba688f32fb704bb73de27382fe33a0efc60f5c7bca282cea85",
         "macos_x86_64": "7d20ee0b88dd1d3c1a80b7aa466e66af0adb65fa9da6ce2d3052ee0fee03b3ef",
+    },
+    "1.2.1": {
+        "linux_aarch64": "b2d4653ee1b64cc3eec3a0b21d9fd03715dc33c33e0bc78e7804d5468cd03545",
+        "linux_x86_64": "ed118dde5b160ad98b5260a5511dcfc5bb8d4b7e04f483c985d2df6ddaf0bbad",
+        "macos_aarch64": "b9ff6b22c1cce276d2ce2d84ee7770f2794f4e1efdea239def046264ee1b5197",
+        "macos_x86_64": "2b891db343c111c48d8be32d9b93ac0adf7bd9a93d6bdeb5303e770592a091cd",
     },
     "1.2.0": {
         "linux_aarch64": "5b27d702c8b8463090fe19ca4e2aa241bf8f2b09daf208feff051a90e4d12cee",
