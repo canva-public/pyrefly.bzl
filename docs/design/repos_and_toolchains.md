@@ -35,9 +35,9 @@ extension metadata.
 The symbolic `pyrefly_configuration` macro normalises loading-time inputs and calls a private rule.
 The private rule provides:
 
-- `PyreflyConfigInfo`, containing the effective config file, tag and expected-failure policy,
-  deterministic mapped-stub data, stubgen selectors, wrapper executable, and optional baseline
-  label-to-file mapping.
+- `PyreflyConfigInfo`, containing the effective config file, tag, expected-failure, and stale
+  baseline policy, deterministic mapped-stub data, stubgen selectors, wrapper executable, and
+  optional baseline label-to-file mapping.
 - `PyreflyTargetEnvironmentInfo`, containing the Python version and `sys.platform` value derived
   from the target configuration's rules_python toolchain and OS constraint.
 
@@ -82,8 +82,12 @@ Pyrefly executables are Bazel tools and use execroot-relative paths, keeping act
 of an output base or sandbox path. The wrapper resolves that path after the action starts.
 
 For a target with a baseline, `PyreflyCheck` adds only the matching JSON file from
-`PyreflyConfigInfo.baselines`. The aggregate registry is not an action input. Changing one baseline
-therefore changes only its target's check input digest.
+`PyreflyConfigInfo.baselines`, copies it to a declared output, and asks Pyrefly to prune that copy.
+The pruned file is part of `_validation`. The aggregate registry is not an action input. Changing
+one baseline therefore changes only its target's check input digest. When `error_stale_baseline` is
+enabled, a difference between the checked-in and pruned files fails the action; otherwise, the
+wrapper warns. The message reports the command which copies a non-empty declared output back to the
+checked-in path, or removes the checked-in baseline when every entry was pruned.
 
 `PyreflyUpdateBaseline` does not consume an existing baseline. It publishes a fresh file through
 `pyrefly_updated_baseline`. The executable registry requests that output group, reads the Build

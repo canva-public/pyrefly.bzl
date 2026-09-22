@@ -43,6 +43,41 @@ targets=(
 )
 "${bazel[@]}" build "${targets[@]}"
 bazel_bin="$("${bazel[@]}" info bazel-bin)"
+source_baseline="pyrefly_baselines/tests/baselines/baselined_failure.json"
+pruned_baseline="$bazel_bin/tests/baselines/baselined_failure_pyrefly_pruned_baseline.json"
+grep -F 'stale baseline fixture' "$source_baseline" >/dev/null
+grep -F 'bad-assignment' "$pruned_baseline" >/dev/null
+if grep -F 'stale baseline fixture' "$pruned_baseline" >/dev/null; then
+  echo "Pruned baseline retained a stale entry" >&2
+  exit 1
+fi
+validation_outputs="$("${bazel[@]}" cquery \
+  --output=files \
+  //tests/baselines:baselined_failure_test_validation)"
+if ! grep -F 'baselined_failure_pyrefly_pruned_baseline.json' \
+  <<<"$validation_outputs" >/dev/null; then
+  echo "Validation outputs did not contain the pruned baseline" >&2
+  printf '%s\n' "$validation_outputs" >&2
+  exit 1
+fi
+set +e
+strict_output="$("${bazel[@]}" build \
+  //tests/baselines:baselined_failure_strict_check 2>&1)"
+strict_status=$?
+set -e
+if [[ "$strict_status" -eq 0 ]]; then
+  echo "Expected stale baseline validation to fail" >&2
+  printf '%s\n' "$strict_output" >&2
+  exit 1
+fi
+if ! grep -F 'contains stale entries' <<<"$strict_output" >/dev/null || \
+  ! grep -F 'cp bazel-out/' <<<"$strict_output" >/dev/null || \
+  ! grep -F "baselined_failure_pyrefly_pruned_baseline.json $source_baseline" \
+    <<<"$strict_output" >/dev/null; then
+  echo "Stale baseline failure did not contain the expected copy command" >&2
+  printf '%s\n' "$strict_output" >&2
+  exit 1
+fi
 
 assert_action_baseline() {
   local target="$1"
@@ -55,6 +90,11 @@ assert_action_baseline() {
   if ! grep -F "pyrefly_baselines/tests/baselines/$expected_baseline.json" \
     <<<"$output" >/dev/null; then
     echo "Expected $target check inputs to contain $expected_baseline.json" >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+  if ! grep -F -- "--pruned-baseline" <<<"$output" >/dev/null; then
+    echo "Expected $target check to declare a pruned baseline output" >&2
     printf '%s\n' "$output" >&2
     exit 1
   fi

@@ -96,12 +96,15 @@ mutually exclusive. Registered versions are downloaded from
 [Pyrefly's GitHub releases](https://github.com/facebook/pyrefly/releases), with support for Linux
 (musl) and macOS on x86-64 and Arm64.
 
+Per-target baseline pruning requires Pyrefly 1.3.0 or later.
+
 ## Configuration
 
 The aspect is configured through the `pyrefly_configuration` target. It accepts:
 
 - `config`: a `pyrefly.toml` or `pyproject.toml` file.
 - `baselines`: an optional [`pyrefly_baselines`](#baselines) target.
+- `error_stale_baseline`: whether stale baseline entries fail their check action.
 - `include_tags` or `exclude_tags`, which are mutually exclusive.
 - `expected_failures` and an optional `stale_message`.
 - `stub_packages`, a runtime-target-to-stub-target dictionary.
@@ -223,11 +226,18 @@ pyrefly_configuration(
     name = "config",
     ...
     baselines = "//tools/pyrefly/baselines",
+    error_stale_baseline = True,
     ...
 )
 ```
 
 Targets without a matching file run without a baseline.
+
+Checks with a matching baseline prune a copy of that file and publish the result through Bazel's
+`_validation` output group. The checked-in baseline remains unchanged. Removing stale entries emits
+a warning with a command that copies a non-empty pruned output from `bazel-out` back to the
+checked-in baseline, or removes the checked-in baseline when every entry was pruned. When
+`error_stale_baseline` is enabled, the same condition fails the check action instead.
 
 Create, refresh, or clean up baselines by running the baselines target with one or more Bazel target
 patterns:

@@ -97,7 +97,7 @@ is no generated policy repository or runnable executable proxy.
 
 `pyrefly_configuration` is a symbolic macro with these public attributes:
 
-- `config`, `baselines`, `include_tags`, and `exclude_tags`;
+- `config`, `baselines`, `error_stale_baseline`, `include_tags`, and `exclude_tags`;
 - `expected_failures` and `stale_message`;
 - `stub_packages`; and
 - `stubgen_include`, `stubgen_exclude`, `stubgen_include_docstrings`, and `stubgen_include_private`.
@@ -113,8 +113,8 @@ mentioned targets are not dependencies of the configuration target.
 
 The private rule returns both `PyreflyConfigInfo` and `PyreflyTargetEnvironmentInfo`.
 `PyreflyConfigInfo` contains policy, mapped-stub data, resolved stubgen selectors, the optional
-baseline mapping, effective config file, and wrapper executable. `PyreflyTargetEnvironmentInfo`
-contains the target Python version and platform.
+baseline mapping, stale-baseline error setting, effective config file, and wrapper executable.
+`PyreflyTargetEnvironmentInfo` contains the target Python version and platform.
 
 Python version comes from the selected target runtime's interpreter metadata, falling back to
 rules_python's configured version. Python platform comes from the target OS constraint and maps to
@@ -139,7 +139,8 @@ reads both shared providers from the configured target and resolves Pyrefly from
 Main-repository targets with direct `.py`, `.pyi`, or `.ipynb` sources register `PyreflyCheck`
 validation actions when selected by tag policy. External and unselected targets still contribute a
 canonical dependency representation through stubgen or minification. Validation outputs propagate
-through Bazel's `_validation` output group.
+through Bazel's `_validation` output group. Checks with baselines also expose a pruned baseline in
+that group.
 
 The aspect publishes baseline-independent `PyreflyCheckInputsInfo`. The update aspect requires that
 provider, reuses the normal aspect's dependency graph, and emits a direct `pyrefly_updated_baseline`
@@ -182,7 +183,12 @@ available only through the configuration provider; there is no generated Starlar
 
 `pyrefly_baselines` maps checked-in JSON paths to target labels and carries a required local update
 aspect string. A configuration target stores its label-to-file mapping in `PyreflyConfigInfo`.
-Normal check actions declare only the matching file.
+Normal check actions declare the matching file as an input and a separate pruned baseline as an
+output. The wrapper copies the input to the output path, points Pyrefly at the copy, and passes
+`--prune-baseline`, leaving the checked-in file unchanged. When `error_stale_baseline` is enabled,
+the wrapper fails if pruning changed the baseline; otherwise, it warns. In either case, the message
+includes a command that copies a non-empty declared output from `bazel-out` to the checked-in path,
+or removes the checked-in baseline when the declared output has no errors.
 
 The registry is executable. Its run environment supplies `PYREFLY_UPDATE_ASPECT`, and the updater
 uses that value for the nested Bazel build. Fresh update actions do not consume existing baseline
@@ -206,6 +212,7 @@ The wrapper's `check`, `minify`, `stubgen`, `update-baseline`, `display-warnings
 
 - The v0.1 ruleset targets Bazel 9 and rules_python 2.0.0.
 - The wrapper requires Python 3.11 or newer.
+- Baseline pruning requires Pyrefly 1.3.0 or newer.
 - Downloaded releases are pinned by asset name and SHA-256.
 - Wrapper tests cover command behaviour, analysis tests cover providers and actions, and integration
   workspaces cover complete builds with real Pyrefly execution.

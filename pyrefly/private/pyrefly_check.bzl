@@ -70,6 +70,13 @@ def create_pyrefly_check_action(
     json_output = ctx.actions.declare_file(target.label.name + "_pyrefly.json")
     sarif_output = ctx.actions.declare_file(target.label.name + "_pyrefly.sarif")
     expected_to_fail = str(target.label) in config.expected_failure_labels
+    check_outputs = [
+        marker,
+        fulltext_output,
+        json_output,
+        sarif_output,
+    ]
+    validation_outputs = [marker]
 
     fixed_args = _fixed_args(ctx, target, pyrefly, target_environment, "check")
     check_trace = declare_otlp_trace(
@@ -93,8 +100,17 @@ def create_pyrefly_check_action(
         fixed_args.add("--base-config")
         fixed_args.add(config.base_config)
     if baseline:
+        pruned_baseline = ctx.actions.declare_file(
+            target.label.name + "_pyrefly_pruned_baseline.json",
+        )
         fixed_args.add("--baseline")
         fixed_args.add(baseline)
+        fixed_args.add("--pruned-baseline")
+        fixed_args.add(pruned_baseline)
+        if config.error_stale_baseline:
+            fixed_args.add("--error-stale-baseline")
+        check_outputs.append(pruned_baseline)
+        validation_outputs.append(pruned_baseline)
 
     input_args = _input_args(
         ctx,
@@ -112,13 +128,7 @@ def create_pyrefly_check_action(
         executable = config.wrapper,
         arguments = [fixed_args, input_args],
         inputs = depset(transitive = inputs),
-        outputs = [
-            marker,
-            fulltext_output,
-            json_output,
-            sarif_output,
-            check_trace,
-        ],
+        outputs = check_outputs + [check_trace],
         mnemonic = "PyreflyCheck",
         progress_message = "Pyrefly type checking %{label}",
         tools = [pyrefly],
@@ -155,7 +165,7 @@ def create_pyrefly_check_action(
         json = depset([json_output]),
         otlp_traces = [check_trace, display_trace],
         sarif = depset([sarif_output]),
-        validation = depset([marker], transitive = transitive_validation),
+        validation = depset(validation_outputs, transitive = transitive_validation),
         warnings = depset([display_marker]),
     )
 

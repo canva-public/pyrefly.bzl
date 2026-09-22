@@ -230,6 +230,7 @@ def _configuration_impl(ctx):
             baselines = (
                 ctx.attr.baselines[PyreflyBaselinesInfo].baselines if ctx.attr.baselines else {}
             ),
+            error_stale_baseline = ctx.attr.error_stale_baseline,
             exclude_tags = set(ctx.attr.exclude_tags),
             expected_failure_labels = set(ctx.attr.expected_failure_labels),
             include_tags = set(ctx.attr.include_tags),
@@ -263,6 +264,7 @@ _pyrefly_configuration = rule(
         ),
         "baselines": attr.label(providers = [PyreflyBaselinesInfo]),
         "config": attr.label(allow_single_file = True),
+        "error_stale_baseline": attr.bool(),
         "exclude_tags": attr.string_list(),
         "expected_failure_labels": attr.string_list(),
         "include_tags": attr.string_list(),
@@ -318,6 +320,9 @@ pyrefly_configuration = macro(
         "config": attr.label(
             allow_single_file = True,
             doc = "Optional pyrefly.toml or pyproject.toml file containing Pyrefly configuration.",
+        ),
+        "error_stale_baseline": attr.bool(
+            doc = "Whether check actions fail when their baseline contains stale entries.",
         ),
         "exclude_tags": attr.string_list(
             doc = "Target tags which disable checking. Mutually exclusive with include_tags.",

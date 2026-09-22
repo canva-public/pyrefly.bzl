@@ -1,4 +1,5 @@
 load("@rules_python//python:defs.bzl", "py_library")
+load("//:pyrefly_aspects.bzl", "pyrefly_check_test", "pyrefly_strict_check")
 
 _FIXTURE_TAGS = ["manual"]
 
@@ -35,4 +36,16 @@ py_library(
     testonly = True,
     srcs = ["failure.py"],
     tags = _FIXTURE_TAGS,
+)
+
+pyrefly_check_test(
+    name = "baselined_failure_test",
+    target = ":baselined_failure",
+)
+
+pyrefly_strict_check(
+    name = "baselined_failure_strict_check",
+    testonly = True,
+    tags = _FIXTURE_TAGS,
+    target = ":baselined_failure",
 )
