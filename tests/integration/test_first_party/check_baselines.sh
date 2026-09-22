@@ -74,12 +74,12 @@ expect_only_a_baseline_check() {
   output="$("${bazel[@]}" build --subcommands \
     //tests/baselines:baseline_cache_a \
     //tests/baselines:baseline_cache_b 2>&1)"
-  if ! grep -F "baseline_cache_a_pyrefly_check.marker" <<<"$output" >/dev/null; then
+  if ! grep -F "baseline_cache_a_pyrefly.marker" <<<"$output" >/dev/null; then
     echo "Expected baseline_cache_a's Pyrefly check to rerun" >&2
     printf '%s\n' "$output" >&2
     exit 1
   fi
-  if grep -F "baseline_cache_b_pyrefly_check.marker" <<<"$output" >/dev/null; then
+  if grep -F "baseline_cache_b_pyrefly.marker" <<<"$output" >/dev/null; then
     echo "baseline_cache_b's Pyrefly check reran after only baseline_cache_a changed" >&2
     printf '%s\n' "$output" >&2
     exit 1

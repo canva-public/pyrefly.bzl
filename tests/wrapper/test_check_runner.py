@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import os
 from dataclasses import replace
@@ -13,7 +14,6 @@ from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
 )
 
 from pyrefly.private.wrapper import check_runner, cli
-from pyrefly.private.wrapper.utils import WrapperError
 
 _PYREFLY_EXECUTABLE = str(
     (Path.cwd() / os.environ["PYREFLY_TEST_EXECUTABLE"]).absolute()
@@ -37,7 +37,9 @@ def _args(
         python_platform="linux",
         python_version="3.13.11",
         output_marker=tmp_path / "result.marker",
-        warning_output=None,
+        output_fulltext=tmp_path / "result.txt",
+        output_json=tmp_path / "result.json",
+        output_sarif=tmp_path / "result.sarif",
         target_label="//app:lib",
         expected_to_fail=expected,
         stale_message="Remove stale expected failure for %s" if expected else None,
@@ -70,7 +72,11 @@ def test_expected_failure_state_machine_uses_real_pyrefly(
     args = _args(tmp_path, _source(tmp_path, content), expected=expected)
 
     assert check_runner.run(args) == wrapper_code
-    assert args.output_marker.is_file()
+    assert json.loads(args.output_marker.read_text()) == {
+        "expected_failure": expected,
+        "exit_code": 0 if "wrong" not in content else 1,
+        "has_warnings": False,
+    }
 
 
 def test_check_trace_separates_preparation_from_pyrefly_execution(
@@ -111,18 +117,6 @@ def test_check_trace_separates_preparation_from_pyrefly_execution(
     provider.shutdown()
 
 
-def test_marker_is_created_before_check_validation(tmp_path: Path) -> None:
-    """The marker exists even when invalid arguments make the check fail."""
-    args = replace(
-        _args(tmp_path, _source(tmp_path, "value: int = 1\n")),
-        source_file=[],
-    )
-
-    with pytest.raises(WrapperError, match="source-file"):
-        check_runner.run(args)
-    assert args.output_marker.is_file()
-
-
 def test_stale_expected_failure_uses_custom_message(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
@@ -144,22 +138,18 @@ def test_stale_expected_failure_uses_custom_message(
     ):
         assert check_runner.run(args) == 1
     assert "Remove //app:lib, then check //app:lib again" in caplog.messages
-    assert args.output_marker.is_file()
+    assert json.loads(args.output_marker.read_text())["exit_code"] == 0
 
 
-def test_expected_failure_writes_warning_report_at_error_log_level(
+def test_expected_failure_writes_all_diagnostic_formats(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
 ) -> None:
-    """Ratcheted diagnostics are recorded independently of configured logging."""
-    warning_output = tmp_path / "warnings" / "expected_failure.txt"
-    args = replace(
-        _args(
-            tmp_path,
-            _source(tmp_path, 'value: int = "wrong"\n'),
-            expected=True,
-        ),
-        warning_output=warning_output,
+    """A ratcheted failure produces full-text, JSON, and SARIF reports."""
+    args = _args(
+        tmp_path,
+        _source(tmp_path, 'value: int = "wrong"\n'),
+        expected=True,
     )
 
     with caplog.at_level(
@@ -168,9 +158,35 @@ def test_expected_failure_writes_warning_report_at_error_log_level(
     ):
         assert check_runner.run(args) == 0
 
-    warning = warning_output.read_text()
-    assert "bad-assignment" in warning
-    assert "Pyrefly type checking failed for //app:lib as expected" in warning
+    assert "bad-assignment" in args.output_fulltext.read_text()
+    assert json.loads(args.output_json.read_text())["errors"][0]["severity"] == "error"
+    assert json.loads(args.output_sarif.read_text())["version"] == "2.1.0"
+    assert json.loads(args.output_marker.read_text()) == {
+        "expected_failure": True,
+        "exit_code": 1,
+        "has_warnings": False,
+    }
+
+
+@pytest.mark.parametrize(("expected", "wrapper_code"), [(False, 0), (True, 1)])
+def test_warning_findings_count_as_passing_type_checking(
+    tmp_path: Path,
+    expected: bool,
+    wrapper_code: int,
+) -> None:
+    """Warning-only findings pass normally and make a ratchet entry stale."""
+    source = _source(tmp_path, 'value: int = "wrong"\n')
+    base_config = tmp_path / "pyrefly.toml"
+    base_config.write_text('min-severity = "warn"\n[errors]\nbad-assignment = "warn"\n')
+    args = replace(_args(tmp_path, source, expected=expected), base_config=base_config)
+
+    assert check_runner.run(args) == wrapper_code
+    assert "WARN" in args.output_fulltext.read_text()
+    assert json.loads(args.output_marker.read_text()) == {
+        "expected_failure": expected,
+        "exit_code": 1,
+        "has_warnings": True,
+    }
 
 
 def test_all_configured_sources_excluded_is_a_noop(tmp_path: Path) -> None:
@@ -185,4 +201,11 @@ def test_all_configured_sources_excluded_is_a_noop(tmp_path: Path) -> None:
     )
 
     assert check_runner.run(args) == 0
-    assert args.output_marker.is_file()
+    assert args.output_fulltext.read_text() == ""
+    assert json.loads(args.output_json.read_text()) == {"errors": []}
+    assert json.loads(args.output_sarif.read_text())["runs"] == []
+    assert json.loads(args.output_marker.read_text()) == {
+        "expected_failure": False,
+        "exit_code": 0,
+        "has_warnings": False,
+    }

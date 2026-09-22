@@ -215,21 +215,16 @@ def _aspect_impl(target, ctx):
             target_environment,
             baseline = baseline,
         )
-        if check_outputs.warnings:
-            result.append(OutputGroupInfo(
-                _validation = check_outputs.validation,
-                pyrefly_otlp_traces = depset(
-                    [transformed_result.otlp_trace] + check_outputs.otlp_traces,
-                ),
-                pyrefly_warnings = check_outputs.warnings,
-            ))
-        else:
-            result.append(OutputGroupInfo(
-                _validation = check_outputs.validation,
-                pyrefly_otlp_traces = depset(
-                    [transformed_result.otlp_trace] + check_outputs.otlp_traces,
-                ),
-            ))
+        result.append(OutputGroupInfo(
+            _validation = check_outputs.validation,
+            pyrefly_fulltext = check_outputs.fulltext,
+            pyrefly_json = check_outputs.json,
+            pyrefly_otlp_traces = depset(
+                [transformed_result.otlp_trace] + check_outputs.otlp_traces,
+            ),
+            pyrefly_sarif = check_outputs.sarif,
+            pyrefly_warnings = check_outputs.warnings,
+        ))
         return result
     if transitive_validation:
         result.append(

@@ -130,6 +130,9 @@ class MappedStubOptions:
 class CheckOptions(ImportOptions):
     pyrefly_executable: str
     output_marker: Path
+    output_fulltext: Path
+    output_json: Path
+    output_sarif: Path
     target_label: str
     baseline: Path | None = None
     source_file: list[Path] = field(
@@ -138,7 +141,6 @@ class CheckOptions(ImportOptions):
         nargs=None,
     )
     expected_to_fail: bool = False
-    warning_output: Path | None = None
     stale_message: str | None = None
     timeout: float = check_runner.DEFAULT_TIMEOUT_SECONDS
 
@@ -146,7 +148,8 @@ class CheckOptions(ImportOptions):
 @dataclass(frozen=True)
 class DisplayWarningsOptions(BaseOptions):
     output_marker: Path
-    warning_file: Path
+    check_marker: Path
+    fulltext_output: Path
 
 
 @dataclass(frozen=True)
@@ -229,7 +232,7 @@ def create_parser() -> ArgumentParser:
 
     display = subparsers.add_parser(
         "display-warnings",
-        help="Display warnings from a ratcheted Pyrefly check",
+        help="Display warnings from a Pyrefly check",
         add_option_string_dash_variants=DashVariant.DASH,
     )
     display.add_arguments(DisplayWarningsOptions, dest="options")
