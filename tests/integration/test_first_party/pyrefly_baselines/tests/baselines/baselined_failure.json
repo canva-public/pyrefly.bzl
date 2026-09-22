@@ -8,7 +8,6 @@
       "path": "tests/baselines/failure.py",
       "code": -2,
       "name": "bad-assignment",
-      "description": "",
       "concise_description": "baseline fixture"
     }
   ]

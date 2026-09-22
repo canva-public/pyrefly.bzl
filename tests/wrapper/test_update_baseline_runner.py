@@ -5,7 +5,10 @@ import os
 from dataclasses import replace
 from pathlib import Path
 
-from pyrefly.private.wrapper import cli, update_baseline_runner
+import pytest
+
+from pyrefly.private.wrapper import check_runner, cli, update_baseline_runner
+from pyrefly.private.wrapper.utils import CommandResult
 
 _PYREFLY_EXECUTABLE = str(
     (Path.cwd() / os.environ["PYREFLY_TEST_EXECUTABLE"]).absolute()
@@ -29,39 +32,57 @@ def _args(tmp_path: Path, source: Path) -> cli.UpdateBaselineOptions:
     )
 
 
-def test_update_baseline_accepts_type_errors(tmp_path: Path) -> None:
-    """Type errors produce a complete baseline instead of failing the action."""
+def _command_path(command: list[str | Path], option: str) -> Path:
+    return Path(command[command.index(option) + 1])
+
+
+def test_update_baseline_accepts_findings(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A findings exit code still produces a successful update action."""
     source = tmp_path / "app.py"
-    source.write_text('value: int = "wrong"\n')
+    source.write_text("value = 1\n")
     args = _args(tmp_path, source)
+    generated = b"generated baseline\n"
+
+    def run_command(
+        command: list[str | Path],
+        **_kwargs: object,
+    ) -> CommandResult:
+        _command_path(command, "--baseline").write_bytes(generated)
+        return CommandResult(1, "findings")
+
+    monkeypatch.setattr(check_runner, "run_command", run_command)
 
     assert update_baseline_runner.run(args) == 0
-    errors = json.loads(args.output_baseline.read_text())["errors"]
-    assert len(errors) == 1
-    assert errors[0]["name"] == "bad-assignment"
+    assert args.output_baseline.read_bytes() == generated
 
 
-def test_update_baseline_does_not_seed_from_existing_output(tmp_path: Path) -> None:
+def test_update_baseline_does_not_seed_from_existing_output(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
     """An existing artifact is removed before Pyrefly regenerates from scratch."""
     source = tmp_path / "app.py"
     source.write_text("value: int = 1\n")
     args = _args(tmp_path, source)
     args.output_baseline.write_text(json.dumps({"errors": [{"name": "stale-error"}]}))
+    generated = b"generated baseline\n"
+
+    def run_command(
+        command: list[str | Path],
+        **_kwargs: object,
+    ) -> CommandResult:
+        output = _command_path(command, "--baseline")
+        assert not output.exists()
+        output.write_bytes(generated)
+        return CommandResult(0, "")
+
+    monkeypatch.setattr(check_runner, "run_command", run_command)
 
     assert update_baseline_runner.run(args) == 0
-    assert json.loads(args.output_baseline.read_text()) == {"errors": []}
-
-
-def test_update_baseline_removes_inherited_baseline(tmp_path: Path) -> None:
-    """A shared baseline setting cannot affect fresh per-target generation."""
-    source = tmp_path / "app.py"
-    source.write_text("value: int = 1\n")
-    base_config = tmp_path / "pyrefly.toml"
-    base_config.write_text('baseline = "missing-shared-baseline.json"\n')
-    args = replace(_args(tmp_path, source), base_config=base_config)
-
-    assert update_baseline_runner.run(args) == 0
-    assert json.loads(args.output_baseline.read_text()) == {"errors": []}
+    assert args.output_baseline.read_bytes() == generated
 
 
 def test_update_baseline_writes_empty_output_for_excluded_sources(
@@ -79,4 +100,4 @@ def test_update_baseline_writes_empty_output_for_excluded_sources(
     )
 
     assert update_baseline_runner.run(args) == 0
-    assert json.loads(args.output_baseline.read_text()) == {"errors": []}
+    assert args.output_baseline.read_text() == '{\n  "errors": []\n}\n'

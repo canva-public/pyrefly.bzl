@@ -74,7 +74,7 @@ use_repo(uv, "pyrefly_pypi")
 
 pyrefly = use_extension("//:pyrefly.bzl", "pyrefly", dev_dependency = True)
 pyrefly.toolchain(
-    version = "1.1.1",
+    version = "1.3.1",
 )
 use_repo(pyrefly, "pyrefly_toolchain")
 

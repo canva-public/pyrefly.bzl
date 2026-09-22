@@ -87,5 +87,5 @@ therefore changes only its target's check input digest.
 
 `PyreflyUpdateBaseline` does not consume an existing baseline. It publishes a fresh file through
 `pyrefly_updated_baseline`. The executable registry requests that output group, reads the Build
-Event Protocol mapping, sanitises unstable descriptions, and creates, updates, or deletes source
-baselines atomically.
+Event Protocol mapping, and copies the action output verbatim when creating or updating source
+baselines atomically. Empty outputs delete existing source baselines.

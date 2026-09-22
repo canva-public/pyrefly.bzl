@@ -76,18 +76,10 @@ def test_read_updated_baselines_resolves_nested_named_sets(tmp_path: Path) -> No
 
 
 def test_copy_updated_baselines_creates_target_path(tmp_path: Path) -> None:
-    """A new baseline is sanitized without changing its Bazel output."""
+    """A new non-empty action output is copied byte-for-byte."""
     workspace = tmp_path / "workspace"
     output = tmp_path / "output.json"
-    _write_baseline(
-        output,
-        [
-            {
-                "description": "unstable path: /tmp/sandbox/source.py",
-                "name": "bad-assignment",
-            }
-        ],
-    )
+    _write_baseline(output, [{"name": "bad-assignment"}])
     original_output = output.read_bytes()
 
     summary = baseline_updater.copy_updated_baselines(
@@ -97,7 +89,7 @@ def test_copy_updated_baselines_creates_target_path(tmp_path: Path) -> None:
     )
 
     destination = workspace / "pyrefly_baselines/app/models/library.json"
-    assert json.loads(destination.read_text())["errors"][0]["description"] == ""
+    assert destination.read_bytes() == original_output
     assert output.read_bytes() == original_output
     assert summary == baseline_updater.UpdateSummary(created=1)
 
@@ -107,8 +99,9 @@ def test_copy_updated_baselines_updates_changed_content(tmp_path: Path) -> None:
     workspace = tmp_path / "workspace"
     destination = workspace / "baselines/app.json"
     output = tmp_path / "output.json"
-    _write_baseline(destination, [{"description": "", "name": "old"}])
-    _write_baseline(output, [{"description": "unstable", "name": "new"}])
+    _write_baseline(destination, [{"name": "old"}])
+    _write_baseline(output, [{"name": "new"}])
+    generated = output.read_bytes()
 
     summary = baseline_updater.copy_updated_baselines(
         workspace,
@@ -116,9 +109,7 @@ def test_copy_updated_baselines_updates_changed_content(tmp_path: Path) -> None:
         {"//:app": output},
     )
 
-    assert json.loads(destination.read_text()) == {
-        "errors": [{"description": "", "name": "new"}]
-    }
+    assert destination.read_bytes() == generated
     assert summary == baseline_updater.UpdateSummary(updated=1)
 
 
@@ -147,8 +138,8 @@ def test_copy_updated_baselines_leaves_matching_content_unchanged(
     workspace = tmp_path / "workspace"
     destination = workspace / "baselines/app.json"
     output = tmp_path / "output.json"
-    _write_baseline(destination, [{"description": "", "name": "same"}])
-    _write_baseline(output, [{"description": "unstable", "name": "same"}])
+    _write_baseline(destination, [{"name": "same"}])
+    _write_baseline(output, [{"name": "same"}])
     original_mtime = destination.stat().st_mtime_ns
 
     summary = baseline_updater.copy_updated_baselines(
