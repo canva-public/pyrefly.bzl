@@ -94,8 +94,15 @@ def _expect_pyproject_extraction(env, target):
         "tests/analysis/pyproject.toml",
         "--output-config",
         "{bindir}/tests/analysis/configuration_tests_pyproject_subject_effective/pyrefly.toml",
+        "--otlp-trace-output",
+        "{bindir}/tests/analysis/configuration_tests_pyproject_subject_pyrefly_extract_config_otlp_trace.jsonl",
     ]).in_order()
     action.inputs().contains("tests/analysis/pyproject.toml")
+    env.expect.that_target(target).output_group(
+        "pyrefly_otlp_traces",
+    ).contains_exactly([
+        "{package}/configuration_tests_pyproject_subject_pyrefly_extract_config_otlp_trace.jsonl",
+    ])
 
 def _expect_check_uses_extracted_config(env, target):
     """PyreflyCheck consumes the extracted file and not the original pyproject."""

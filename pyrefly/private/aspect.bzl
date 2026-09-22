@@ -148,7 +148,7 @@ def _aspect_impl(target, ctx):
         ctx.attr._python_import_all_repositories[BuildSettingInfo].value
     )
     if _should_stubgen(config, target.label):
-        transformed = create_pyrefly_stubgen_action(
+        transformed_result = create_pyrefly_stubgen_action(
             ctx,
             target,
             config,
@@ -164,7 +164,7 @@ def _aspect_impl(target, ctx):
             target_inputs = target_inputs,
         )
     else:
-        transformed = create_pyrefly_minify_action(
+        transformed_result = create_pyrefly_minify_action(
             ctx,
             target,
             config,
@@ -175,6 +175,7 @@ def _aspect_impl(target, ctx):
             repository_root = source_repository_root,
         )
 
+    transformed = transformed_result.output
     info = PyreflyInfo(
         imports = depset(
             direct = [transformed.path],
@@ -185,6 +186,7 @@ def _aspect_impl(target, ctx):
             transitive = transitive_sources,
         ),
     )
+    otlp_traces = depset([transformed_result.otlp_trace])
 
     should_check = (
         type_checking_enabled and
@@ -216,15 +218,28 @@ def _aspect_impl(target, ctx):
         if check_outputs.warnings:
             result.append(OutputGroupInfo(
                 _validation = check_outputs.validation,
+                pyrefly_otlp_traces = depset(
+                    [transformed_result.otlp_trace] + check_outputs.otlp_traces,
+                ),
                 pyrefly_warnings = check_outputs.warnings,
             ))
         else:
-            result.append(OutputGroupInfo(_validation = check_outputs.validation))
+            result.append(OutputGroupInfo(
+                _validation = check_outputs.validation,
+                pyrefly_otlp_traces = depset(
+                    [transformed_result.otlp_trace] + check_outputs.otlp_traces,
+                ),
+            ))
         return result
     if transitive_validation:
         result.append(
-            OutputGroupInfo(_validation = depset(transitive = transitive_validation)),
+            OutputGroupInfo(
+                _validation = depset(transitive = transitive_validation),
+                pyrefly_otlp_traces = otlp_traces,
+            ),
         )
+    else:
+        result.append(OutputGroupInfo(pyrefly_otlp_traces = otlp_traces))
     return result
 
 def _update_baseline_aspect_impl(target, ctx):
@@ -232,7 +247,7 @@ def _update_baseline_aspect_impl(target, ctx):
     if not check_inputs.enabled:
         return []
 
-    output = create_pyrefly_update_baseline_action(
+    result = create_pyrefly_update_baseline_action(
         ctx,
         target,
         check_inputs.check_sources,
@@ -243,7 +258,10 @@ def _update_baseline_aspect_impl(target, ctx):
         ctx.attr._pyrefly_config[PyreflyTargetEnvironmentInfo],
     )
     return [
-        OutputGroupInfo(pyrefly_updated_baseline = depset([output])),
+        OutputGroupInfo(
+            pyrefly_otlp_traces = depset([result.otlp_trace]),
+            pyrefly_updated_baseline = depset([result.output]),
+        ),
     ]
 
 def _check_action_attrs(configuration):

@@ -6,6 +6,11 @@ from dataclasses import replace
 from pathlib import Path
 
 import pytest
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
 
 from pyrefly.private.wrapper import check_runner, cli
 from pyrefly.private.wrapper.utils import WrapperError
@@ -66,6 +71,44 @@ def test_expected_failure_state_machine_uses_real_pyrefly(
 
     assert check_runner.run(args) == wrapper_code
     assert args.output_marker.is_file()
+
+
+def test_check_trace_separates_preparation_from_pyrefly_execution(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Check traces expose preparation phases and the Pyrefly subprocess."""
+    args = _args(tmp_path, _source(tmp_path, "value: int = 1\n"))
+    provider = TracerProvider()
+    exporter = InMemorySpanExporter()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    tracer = provider.get_tracer(__name__)
+    monkeypatch.setattr(check_runner, "tracer", tracer)
+
+    with tracer.start_as_current_span("pyrefly.wrapper.check"):
+        assert check_runner.run(args) == 0
+
+    spans_by_name = {span.name: span for span in exporter.get_finished_spans()}
+    assert set(spans_by_name) == {
+        "pyrefly.wrapper.check",
+        "pyrefly.wrapper.check.build-config",
+        "pyrefly.wrapper.check.collect-inputs",
+        "pyrefly.wrapper.check.materialize-bundled-stubs",
+        "pyrefly.wrapper.check.materialize-import-view",
+        "pyrefly.wrapper.check.plan-import-view",
+        "pyrefly.wrapper.check.resolve-executable",
+        "pyrefly.wrapper.check.resolve-source-layout",
+        "pyrefly.wrapper.check.run-pyrefly",
+        "pyrefly.wrapper.check.write-config",
+    }
+    subprocess = spans_by_name["pyrefly.wrapper.check.run-pyrefly"]
+    assert subprocess.attributes is not None
+    assert dict(subprocess.attributes) == {
+        "pyrefly.source.count": 1,
+        "pyrefly.timeout.seconds": 30,
+        "pyrefly.wrapper.exit_code": 0,
+    }
+    provider.shutdown()
 
 
 def test_marker_is_created_before_check_validation(tmp_path: Path) -> None:

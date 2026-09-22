@@ -272,6 +272,15 @@ Type-checking will still run on these targets, however the results will be effec
 You may specify a custom `stale_message` to be printed when an expected failure passes
 type-checking. `%s` will be replaced with the passing target's label.
 
+## OpenTelemetry traces
+
+Each wrapper operation writes its OpenTelemetry spans as OTLP/JSON Lines. Request the trace files
+for wrapper actions created directly for a target through the `pyrefly_otlp_traces` output group:
+
+```shell
+bazel build --output_groups=+pyrefly_otlp_traces //path/to:target
+```
+
 ## Future improvements
 
 - Expose Pyrefly results through Bazel output groups in machine-readable formats such as JSON,

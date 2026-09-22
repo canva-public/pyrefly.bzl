@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import json
 import logging
 import sys
 from pathlib import Path
@@ -252,6 +253,85 @@ def test_cli_accepts_configured_log_level(
 
     assert logging.getLogger("pyrefly").level == logging.INFO
     assert "stubgen ran" in log_file.read_text()
+
+
+def test_cli_serialises_operation_trace(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """A trace contains related root and phase spans for the wrapper operation."""
+    trace_file = tmp_path / "traces" / "minify.jsonl"
+    source = tmp_path / "package.py"
+    source.write_text("value = 1\n")
+    monkeypatch.chdir(tmp_path)
+
+    assert (
+        cli.main(
+            [
+                "minify",
+                "--otlp-trace-output",
+                str(trace_file),
+                "--output-dir",
+                "minified",
+                "--bazel-bin-dir",
+                "bin",
+                "--repository-root",
+                ".",
+                "--input-path",
+                "package.py",
+            ]
+        )
+        == 0
+    )
+
+    requests = [json.loads(line) for line in trace_file.read_text().splitlines()]
+    resource_spans = [
+        resource_spans
+        for request in requests
+        for resource_spans in request["resourceSpans"]
+    ]
+    traces = [
+        span
+        for resource in resource_spans
+        for scope_spans in resource["scopeSpans"]
+        for span in scope_spans["spans"]
+    ]
+    traces_by_name = {trace["name"]: trace for trace in traces}
+    assert set(traces_by_name) == {
+        "pyrefly.wrapper.minify",
+        "pyrefly.wrapper.minify.collect-inputs",
+        "pyrefly.wrapper.minify.copy-files",
+        "pyrefly.wrapper.minify.finalize-output",
+        "pyrefly.wrapper.minify.inspect-mapped-stubs",
+        "pyrefly.wrapper.minify.resolve-source-layout",
+    }
+
+    root = traces_by_name["pyrefly.wrapper.minify"]
+    assert {
+        attribute["key"]: next(iter(attribute["value"].values()))
+        for attribute in root["attributes"]
+    } == {
+        "pyrefly.wrapper.exit_code": "0",
+        "pyrefly.wrapper.operation": "minify",
+    }
+    assert {
+        attribute["key"]: next(iter(attribute["value"].values()))
+        for attribute in resource_spans[0]["resource"]["attributes"]
+    }["service.name"] == "pyrefly-bazel-wrapper"
+    trace_ids = {trace["traceId"] for trace in traces}
+    assert len(trace_ids) == 1
+    assert "parentSpanId" not in root
+    assert all(
+        trace["parentSpanId"] == root["spanId"] for trace in traces if trace is not root
+    )
+    input_collection = traces_by_name["pyrefly.wrapper.minify.collect-inputs"]
+    assert {
+        attribute["key"]: next(iter(attribute["value"].values()))
+        for attribute in input_collection["attributes"]
+    } == {
+        "pyrefly.file.count": "1",
+        "pyrefly.input.count": "1",
+    }
 
 
 def test_cli_accepts_repeated_options_from_bazel_parameter_files(

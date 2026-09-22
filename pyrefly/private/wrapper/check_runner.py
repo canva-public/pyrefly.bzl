@@ -7,6 +7,9 @@ import tempfile
 from pathlib import Path
 from typing import TYPE_CHECKING
 
+from opentelemetry import trace
+from opentelemetry.trace import Status, StatusCode
+
 from .config import (
     build_config,
     dump_toml,
@@ -31,6 +34,7 @@ if TYPE_CHECKING:
 
 DEFAULT_TIMEOUT_SECONDS = 5 * 60
 logger = logging.getLogger(__name__)
+tracer = trace.get_tracer(__name__)
 
 
 def _record_expected_failure(message: str, warning_output: Path | None) -> None:
@@ -48,50 +52,96 @@ def invoke(
     update_baseline: bool,
 ) -> CommandResult | None:
     """Run Pyrefly with the common hermetic check environment."""
-    direct_inputs = args.direct_inputs()
-    dependencies = args.dependency_context()
+    trace_prefix = "update-baseline" if update_baseline else "check"
+    with tracer.start_as_current_span(
+        f"pyrefly.wrapper.{trace_prefix}.collect-inputs"
+    ) as span:
+        direct_inputs = args.direct_inputs()
+        dependencies = args.dependency_context()
+        direct_files = collect_type_relevant_files(direct_inputs.paths)
+        span.set_attribute("pyrefly.input.count", len(direct_inputs.paths))
+        span.set_attribute("pyrefly.file.count", len(direct_files))
     if not args.source_file:
         raise WrapperError("At least one --source-file is required")
     operation = "Pyrefly baseline update" if update_baseline else "Pyrefly check"
-    direct_files = collect_type_relevant_files(direct_inputs.paths)
     with tempfile.TemporaryDirectory(
         prefix=".pyrefly-bundled-",
         dir=Path.cwd(),
     ) as bundled_directory:
         bundled_stubs = Path(bundled_directory)
-        has_bundled_stubs = materialize_bundled_stub_overlay(
-            direct_inputs,
-            dependencies,
-            bundled_stubs,
-            bazel_bin_dir=args.bazel_bin_dir,
-        )
-        direct_search_paths = resolve_source_layout(
-            direct_files,
-            direct_inputs.import_roots,
-            args.bazel_bin_dir,
-            Path.cwd(),
-            retained_roots=[Path.cwd()],
-        ).effective_roots
-        import_view = plan_import_view(
-            dependencies,
-            bundled_stub_dirs=[bundled_stubs] if has_bundled_stubs else [],
-            bazel_bin_dir=args.bazel_bin_dir,
-            excluded_runtime_roots=direct_search_paths,
-        )
-        site_package_paths = materialize_import_view(import_view)
-        settings = build_config(
-            source_files=args.source_file,
-            search_paths=merge_matching_import_roots(
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.materialize-bundled-stubs"
+        ) as span:
+            has_bundled_stubs = materialize_bundled_stub_overlay(
+                direct_inputs,
+                dependencies,
+                bundled_stubs,
+                bazel_bin_dir=args.bazel_bin_dir,
+            )
+            span.set_attribute(
+                "pyrefly.bundled_stubs.present",
+                has_bundled_stubs,
+            )
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.resolve-source-layout"
+        ) as span:
+            direct_search_paths = resolve_source_layout(
+                direct_files,
+                direct_inputs.import_roots,
+                args.bazel_bin_dir,
+                Path.cwd(),
+                retained_roots=[Path.cwd()],
+            ).effective_roots
+            span.set_attribute(
+                "pyrefly.search_path.count",
+                len(direct_search_paths),
+            )
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.plan-import-view"
+        ) as span:
+            import_view = plan_import_view(
+                dependencies,
+                bundled_stub_dirs=[bundled_stubs] if has_bundled_stubs else [],
+                bazel_bin_dir=args.bazel_bin_dir,
+                excluded_runtime_roots=direct_search_paths,
+            )
+            span.set_attribute(
+                "pyrefly.import_root.count",
+                len(import_view.ordered_roots),
+            )
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.materialize-import-view"
+        ) as span:
+            site_package_paths = materialize_import_view(import_view)
+            span.set_attribute(
+                "pyrefly.site_package_path.count",
+                len(site_package_paths),
+            )
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.build-config"
+        ) as span:
+            search_paths = merge_matching_import_roots(
                 direct_search_paths,
                 args.bazel_bin_dir,
                 Path("."),
-            ),
-            site_package_paths=site_package_paths,
-            python_platform=args.python_platform,
-            python_version=args.python_version,
-            base_config=args.base_config,
-            baseline=None if update_baseline else baseline,
-        )
+            )
+            settings = build_config(
+                source_files=args.source_file,
+                search_paths=search_paths,
+                site_package_paths=site_package_paths,
+                python_platform=args.python_platform,
+                python_version=args.python_version,
+                base_config=args.base_config,
+                baseline=None if update_baseline else baseline,
+            )
+            span.set_attribute(
+                "pyrefly.project_include.count",
+                len(settings["project-includes"]),
+            )
+            span.set_attribute(
+                "pyrefly.search_path.count",
+                len(search_paths),
+            )
         if not settings["project-includes"]:
             logger.debug(
                 "Skipping %s for %s because project-excludes match every source",
@@ -100,7 +150,10 @@ def invoke(
             )
             return None
 
-        executable = resolve_executable(args.pyrefly_executable)
+        with tracer.start_as_current_span(
+            f"pyrefly.wrapper.{trace_prefix}.resolve-executable"
+        ):
+            executable = resolve_executable(args.pyrefly_executable)
         with tempfile.NamedTemporaryFile(
             mode="w",
             encoding="utf-8",
@@ -108,8 +161,11 @@ def invoke(
             suffix=".toml",
             dir=Path.cwd(),
         ) as config_file:
-            config_file.write(dump_toml(settings))
-            config_file.flush()
+            with tracer.start_as_current_span(
+                f"pyrefly.wrapper.{trace_prefix}.write-config"
+            ):
+                config_file.write(dump_toml(settings))
+                config_file.flush()
             command: list[str | Path] = [
                 executable,
                 "check",
@@ -120,11 +176,22 @@ def invoke(
                 if baseline is None:
                     raise WrapperError("A baseline output is required for an update")
                 command.extend(["--baseline", baseline, "--update-baseline"])
-            return run_command(
-                command,
-                cwd=Path.cwd(),
-                timeout=args.timeout,
-            )
+            with tracer.start_as_current_span(
+                f"pyrefly.wrapper.{trace_prefix}.run-pyrefly",
+                attributes={
+                    "pyrefly.source.count": len(args.source_file),
+                    "pyrefly.timeout.seconds": args.timeout,
+                },
+            ) as span:
+                result = run_command(
+                    command,
+                    cwd=Path.cwd(),
+                    timeout=args.timeout,
+                )
+                span.set_attribute("pyrefly.wrapper.exit_code", result.returncode)
+                if result.returncode != 0:
+                    span.set_status(Status(StatusCode.ERROR))
+                return result
 
 
 def run(args: CheckOptions) -> int:

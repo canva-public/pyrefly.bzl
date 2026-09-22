@@ -20,6 +20,8 @@ py_library(
     imports = ["../../.."],
     visibility = ["//visibility:public"],
     deps = [
+        "@pyrefly_pypi//opentelemetry_exporter_otlp_json_file",
+        "@pyrefly_pypi//opentelemetry_sdk",
         "@pyrefly_pypi//simple_parsing",
         "@pyrefly_pypi//tomli_w",
     ],

@@ -1,6 +1,7 @@
 """Construction of filtered Python dependency actions."""
 
 load("@rules_python//python:defs.bzl", "PyInfo")
+load(":otlp.bzl", "declare_otlp_trace")
 
 def create_pyrefly_minify_action(
         ctx,
@@ -34,6 +35,11 @@ def create_pyrefly_minify_action(
     args.add(".")
     args.add("--repository-root")
     args.add(repository_root or target.label.workspace_root or ".")
+    otlp_trace = declare_otlp_trace(
+        ctx,
+        args,
+        target.label.name + "_pyrefly_minify",
+    )
     if retain_repository_root:
         args.add("--retain-repository-root")
     args.add_all(
@@ -67,9 +73,9 @@ def create_pyrefly_minify_action(
         executable = config.wrapper,
         arguments = [args],
         inputs = inputs,
-        outputs = [output],
+        outputs = [output, otlp_trace],
         mnemonic = "PyreflyMinify",
         progress_message = "Minifying Python for %{label}",
         use_default_shell_env = True,
     )
-    return output
+    return struct(output = output, otlp_trace = otlp_trace)

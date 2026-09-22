@@ -5,6 +5,13 @@ import os
 from dataclasses import replace
 from pathlib import Path
 
+import pytest
+from opentelemetry.sdk.trace import TracerProvider
+from opentelemetry.sdk.trace.export import SimpleSpanProcessor
+from opentelemetry.sdk.trace.export.in_memory_span_exporter import (
+    InMemorySpanExporter,
+)
+
 from pyrefly.private.wrapper import cli, stubgen_runner
 from pyrefly.private.wrapper.transformed import (
     MAPPED_STUB_ROOT,
@@ -67,6 +74,56 @@ def test_workspace_source_generates_stub_from_input_root(tmp_path: Path) -> None
     assert stubgen_runner.run(args) == 0
     assert (args.output_dir / "package" / "module.pyi").is_file()
     assert transformed_import_roots(args.output_dir) == [args.output_dir]
+
+
+def test_stubgen_trace_nests_each_pyrefly_run_under_generation(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Stubgen traces distinguish preparation, generation, and finalisation."""
+    source = tmp_path / "package" / "module.py"
+    source.parent.mkdir(parents=True)
+    source.write_text("value: int = 1\n")
+    args = _args(tmp_path, [source])
+    provider = TracerProvider()
+    exporter = InMemorySpanExporter()
+    provider.add_span_processor(SimpleSpanProcessor(exporter))
+    tracer = provider.get_tracer(__name__)
+    monkeypatch.setattr(stubgen_runner, "tracer", tracer)
+
+    with tracer.start_as_current_span("pyrefly.wrapper.stubgen"):
+        assert stubgen_runner.run(args) == 0
+
+    spans_by_name = {span.name: span for span in exporter.get_finished_spans()}
+    assert set(spans_by_name) == {
+        "pyrefly.wrapper.stubgen",
+        "pyrefly.wrapper.stubgen.build-config",
+        "pyrefly.wrapper.stubgen.collect-inputs",
+        "pyrefly.wrapper.stubgen.copy-typed-assets",
+        "pyrefly.wrapper.stubgen.finalize-output",
+        "pyrefly.wrapper.stubgen.generate-stubs",
+        "pyrefly.wrapper.stubgen.inspect-mapped-stubs",
+        "pyrefly.wrapper.stubgen.materialize-bundled-stubs",
+        "pyrefly.wrapper.stubgen.materialize-import-view",
+        "pyrefly.wrapper.stubgen.plan-import-view",
+        "pyrefly.wrapper.stubgen.resolve-executable",
+        "pyrefly.wrapper.stubgen.resolve-generation-layout",
+        "pyrefly.wrapper.stubgen.resolve-source-layout",
+        "pyrefly.wrapper.stubgen.run-pyrefly",
+        "pyrefly.wrapper.stubgen.write-config",
+    }
+    generation = spans_by_name["pyrefly.wrapper.stubgen.generate-stubs"]
+    subprocess = spans_by_name["pyrefly.wrapper.stubgen.run-pyrefly"]
+    assert subprocess.parent is not None
+    assert generation.context is not None
+    assert subprocess.parent.span_id == generation.context.span_id
+    assert subprocess.attributes is not None
+    assert dict(subprocess.attributes) == {
+        "pyrefly.source.count": 1,
+        "pyrefly.timeout.seconds": 420,
+        "pyrefly.wrapper.exit_code": 0,
+    }
+    provider.shutdown()
 
 
 def test_stubgen_skips_sources_outside_repository_root(tmp_path: Path) -> None:

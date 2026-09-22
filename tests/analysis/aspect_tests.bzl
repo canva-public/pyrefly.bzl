@@ -253,6 +253,11 @@ def _expect_public_stubgen(env, target):
         env.fail("pyrefly_stubs did not consume its explicit configuration")
     if "pyproject.toml" in input_paths:
         env.fail("pyrefly_stubs consumed the original pyproject.toml")
+    env.expect.that_target(target).output_group(
+        "pyrefly_otlp_traces",
+    ).contains_exactly([
+        "tests/analysis/manual_stubs_pyrefly_stubgen_otlp_trace.jsonl",
+    ])
 
 def _test_validation_outputs_propagate(name):
     """A validation group contains check outputs for a target and its dependency."""
@@ -278,6 +283,34 @@ def _expect_validation_outputs(env, target):
     env.expect.that_target(target).output_group("_validation").contains_at_least([
         "{package}/test_validation_outputs_propagate_dependency_pyrefly_check.marker",
         "{package}/test_validation_outputs_propagate_subject_pyrefly_check.marker",
+    ])
+
+def _test_otlp_trace_outputs_are_direct(name):
+    """The trace group contains only wrapper actions for the requested target."""
+    py_library(
+        name = name + "_dependency",
+        srcs = ["dependency.py"],
+        tags = _SUBJECT_TAGS,
+    )
+    py_library(
+        name = name + "_subject",
+        srcs = ["consumer.py"],
+        deps = [name + "_dependency"],
+        tags = _SUBJECT_TAGS,
+    )
+    analysis_test(
+        name = name,
+        impl = _expect_direct_otlp_trace_outputs,
+        target = name + "_subject",
+        testing_aspect = _testing_aspect,
+    )
+
+def _expect_direct_otlp_trace_outputs(env, target):
+    env.expect.that_target(target).output_group(
+        "pyrefly_otlp_traces",
+    ).contains_exactly([
+        "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_minify_otlp_trace.jsonl",
+        "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_check_otlp_trace.jsonl",
     ])
 
 def _test_expected_failure_exposes_warning_output_group(name):
@@ -351,6 +384,11 @@ def _expect_update_baseline_output(env, target):
     ).contains_exactly([
         "{package}/test_update_aspect_selects_direct_baseline_output_subject_pyrefly_updated_baseline.json",
     ])
+    env.expect.that_target(target).output_group(
+        "pyrefly_otlp_traces",
+    ).contains_at_least([
+        "{package}/test_update_aspect_selects_direct_baseline_output_subject_pyrefly_update_baseline_otlp_trace.jsonl",
+    ])
 
 def aspect_test_suite(name):
     test_suite(
@@ -369,6 +407,7 @@ def aspect_test_suite(name):
             _test_public_stubs_rule_selects_stubgen,
             _test_update_aspect_selects_direct_baseline_output,
             _test_validation_outputs_propagate,
+            _test_otlp_trace_outputs_are_direct,
             _test_expected_failure_exposes_warning_output_group,
             _test_warning_outputs_do_not_propagate,
         ],

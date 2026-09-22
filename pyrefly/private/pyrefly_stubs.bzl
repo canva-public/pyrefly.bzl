@@ -2,6 +2,7 @@
 
 load("@bazel_skylib//rules:common_settings.bzl", "BuildSettingInfo")
 load("@rules_python//python:defs.bzl", "PyInfo")
+load(":otlp.bzl", "declare_otlp_trace")
 load(
     ":providers.bzl",
     "PyreflyConfigInfo",
@@ -83,6 +84,11 @@ def create_pyrefly_stubgen_action(
     args.add(".")
     args.add("--repository-root")
     args.add(repository_root or target.label.workspace_root or ".")
+    otlp_trace = declare_otlp_trace(
+        ctx,
+        args,
+        ctx.label.name + "_pyrefly_stubgen",
+    )
     if retain_repository_root:
         args.add("--retain-repository-root")
     args.add_all(
@@ -123,13 +129,13 @@ def create_pyrefly_stubgen_action(
         executable = config.wrapper,
         arguments = [args],
         inputs = inputs,
-        outputs = [output],
+        outputs = [output, otlp_trace],
         mnemonic = "PyreflyStubgen",
         progress_message = "Generating type stubs for %{label}",
         tools = [pyrefly],
         use_default_shell_env = True,
     )
-    return output
+    return struct(output = output, otlp_trace = otlp_trace)
 
 def _pyrefly_stubs_impl(ctx):
     library = ctx.attr.library
@@ -150,7 +156,7 @@ def _pyrefly_stubs_impl(ctx):
             library.label,
         ))
 
-    output = create_pyrefly_stubgen_action(
+    result = create_pyrefly_stubgen_action(
         ctx,
         library,
         configuration[PyreflyConfigInfo],
@@ -166,7 +172,12 @@ def _pyrefly_stubs_impl(ctx):
         include_private = ctx.attr.include_private,
         output_name = ctx.label.name + "_pyrefly_stubs",
     )
-    return [DefaultInfo(files = depset([output]))]
+    return [
+        DefaultInfo(files = depset([result.output])),
+        OutputGroupInfo(
+            pyrefly_otlp_traces = depset([result.otlp_trace]),
+        ),
+    ]
 
 _pyrefly_stubs = rule(
     implementation = _pyrefly_stubs_impl,
