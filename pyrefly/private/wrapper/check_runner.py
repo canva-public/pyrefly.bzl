@@ -2,8 +2,10 @@
 
 from __future__ import annotations
 
+import json
 import logging
 import tempfile
+from collections.abc import Sequence
 from pathlib import Path
 from typing import TYPE_CHECKING
 
@@ -37,18 +39,59 @@ logger = logging.getLogger(__name__)
 tracer = trace.get_tracer(__name__)
 
 
-def _record_expected_failure(message: str, warning_output: Path | None) -> None:
-    """Log an expected failure and persist it for optional later display."""
-    logger.warning(message)
-    if warning_output is not None:
-        with warning_output.open("a", encoding="utf-8") as output:
-            output.write(f"[PYREFLY] [WARNING] {message.rstrip()}\n")
+def _write_json(path: Path, document: object) -> None:
+    path.write_text(f"{json.dumps(document, indent=2)}\n", encoding="utf-8")
+
+
+def _write_empty_outputs(args: CheckOptions) -> None:
+    args.output_fulltext.write_text("", encoding="utf-8")
+    _write_json(args.output_json, {"errors": []})
+    _write_json(
+        args.output_sarif,
+        {
+            "$schema": "https://json.schemastore.org/sarif-2.1.0.json",
+            "version": "2.1.0",
+            "runs": [],
+        },
+    )
+
+
+def _read_findings(path: Path) -> list[dict[str, object]]:
+    try:
+        document = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as error:
+        raise WrapperError(
+            f"Unable to read Pyrefly JSON output {path}: {error}"
+        ) from error
+    if not isinstance(document, dict) or not isinstance(document.get("errors"), list):
+        raise WrapperError(f"Invalid Pyrefly JSON output in {path}")
+    findings = document["errors"]
+    if not all(isinstance(finding, dict) for finding in findings):
+        raise WrapperError(f"Invalid Pyrefly findings in {path}")
+    return findings
+
+
+def _write_marker(
+    args: CheckOptions,
+    *,
+    exit_code: int,
+    has_warnings: bool,
+) -> None:
+    _write_json(
+        args.output_marker,
+        {
+            "expected_failure": args.expected_to_fail,
+            "exit_code": exit_code,
+            "has_warnings": has_warnings,
+        },
+    )
 
 
 def invoke(
     args: CheckOptions | UpdateBaselineOptions,
     *,
     baseline: Path | None,
+    diagnostic_outputs: Sequence[tuple[str, Path]] = (),
     update_baseline: bool,
 ) -> CommandResult | None:
     """Run Pyrefly with the common hermetic check environment."""
@@ -172,6 +215,8 @@ def invoke(
                 "--config",
                 Path(config_file.name),
             ]
+            for output_format, output_path in diagnostic_outputs:
+                command.extend(["--output", f"{output_format}:{output_path}"])
             if update_baseline:
                 if baseline is None:
                     raise WrapperError("A baseline output is required for an update")
@@ -195,15 +240,22 @@ def invoke(
 
 
 def run(args: CheckOptions) -> int:
-    args.output_marker.parent.mkdir(parents=True, exist_ok=True)
-    args.output_marker.touch()
-    if args.warning_output is not None:
-        args.warning_output.parent.mkdir(parents=True, exist_ok=True)
-        args.warning_output.write_text("", encoding="utf-8")
+    for output in (
+        args.output_marker,
+        args.output_fulltext,
+        args.output_json,
+        args.output_sarif,
+    ):
+        output.parent.mkdir(parents=True, exist_ok=True)
     try:
         result = invoke(
             args,
             baseline=args.baseline,
+            diagnostic_outputs=(
+                ("full-text", args.output_fulltext),
+                ("json", args.output_json),
+                ("sarif", args.output_sarif),
+            ),
             update_baseline=False,
         )
     except CommandTimeout as error:
@@ -214,28 +266,53 @@ def run(args: CheckOptions) -> int:
         )
         return INFRASTRUCTURE_EXIT_CODE
     if result is None:
+        _write_empty_outputs(args)
+        _write_marker(args, exit_code=0, has_warnings=False)
         return 0
-    if result.output:
-        output = result.output.rstrip("\n")
-        if result.returncode == 1 and args.expected_to_fail:
-            _record_expected_failure(output, args.warning_output)
-        elif result.returncode != 0:
-            logger.error(output)
-        else:
-            logger.debug(output)
+
     logger.debug(
         "Pyrefly check for %s completed with exit code %d",
         args.target_label,
         result.returncode,
     )
     if result.returncode not in (0, 1):
+        _write_marker(args, exit_code=result.returncode, has_warnings=False)
+        if result.output:
+            logger.error(result.output.rstrip("\n"))
         logger.error(
             "Pyrefly infrastructure failure for %s (exit code %d)",
             args.target_label,
             result.returncode,
         )
         return INFRASTRUCTURE_EXIT_CODE
-    if result.returncode == 0 and args.expected_to_fail:
+
+    findings = _read_findings(args.output_json)
+    has_warnings = any(finding.get("severity") == "warn" for finding in findings)
+    _write_marker(
+        args,
+        exit_code=result.returncode,
+        has_warnings=has_warnings,
+    )
+    non_blocking_severities = {"ignore", "info", "warn"}
+    has_type_errors = any(
+        finding.get("severity") not in non_blocking_severities for finding in findings
+    )
+    type_check_failed = has_type_errors or (result.returncode == 1 and not findings)
+    fulltext = args.output_fulltext.read_text(encoding="utf-8").rstrip("\n")
+    if type_check_failed and args.expected_to_fail:
+        if fulltext:
+            logger.warning(fulltext)
+        logger.warning(
+            "Pyrefly type checking failed for %s as expected",
+            args.target_label,
+        )
+        return 0
+    if type_check_failed:
+        if fulltext:
+            logger.error(fulltext)
+        logger.error("Pyrefly type checking failed for %s", args.target_label)
+        return 1
+    if args.expected_to_fail:
         if args.stale_message is None:
             raise WrapperError("--stale-message is required with --expected-to-fail")
         stale_target_label = (
@@ -245,13 +322,6 @@ def run(args: CheckOptions) -> int:
         )
         logger.error(args.stale_message.replace("%s", stale_target_label))
         return 1
-    if result.returncode == 1 and not args.expected_to_fail:
-        logger.error("Pyrefly type checking failed for %s", args.target_label)
-        return 1
-
-    if result.returncode == 1:
-        _record_expected_failure(
-            f"Pyrefly type checking failed for {args.target_label} as expected",
-            args.warning_output,
-        )
+    if result.output:
+        logger.debug(result.output.rstrip("\n"))
     return 0

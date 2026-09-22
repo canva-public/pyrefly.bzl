@@ -108,6 +108,12 @@ def _expect_check(env, target):
         "PyreflyCheck",
         ["PyreflyStubgen", "PyreflyUpdateBaseline"],
     )
+    _expect_action_selection(
+        env,
+        target,
+        "PyreflyDisplayWarnings",
+        [],
+    )
     if (
         OutputGroupInfo in target and
         hasattr(target[OutputGroupInfo], "pyrefly_updated_baseline")
@@ -281,8 +287,8 @@ def _test_validation_outputs_propagate(name):
 
 def _expect_validation_outputs(env, target):
     env.expect.that_target(target).output_group("_validation").contains_at_least([
-        "{package}/test_validation_outputs_propagate_dependency_pyrefly_check.marker",
-        "{package}/test_validation_outputs_propagate_subject_pyrefly_check.marker",
+        "{package}/test_validation_outputs_propagate_dependency_pyrefly.marker",
+        "{package}/test_validation_outputs_propagate_subject_pyrefly.marker",
     ])
 
 def _test_otlp_trace_outputs_are_direct(name):
@@ -311,30 +317,35 @@ def _expect_direct_otlp_trace_outputs(env, target):
     ).contains_exactly([
         "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_minify_otlp_trace.jsonl",
         "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_check_otlp_trace.jsonl",
+        "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_display_warnings_otlp_trace.jsonl",
     ])
 
-def _test_expected_failure_exposes_warning_output_group(name):
-    """A directly requested expected failure exposes one warning display output."""
+def _test_check_exposes_diagnostic_output_groups(name):
+    """Every check exposes full-text, JSON, SARIF, and warning outputs."""
     analysis_test(
         name = name,
-        impl = _expect_warning_output,
+        impl = _expect_diagnostic_outputs,
         target = "//tests/consumer:stale_expected_failure",
         testing_aspect = _testing_aspect,
     )
 
-def _expect_warning_output(env, target):
-    _expect_action_selection(
-        env,
-        target,
-        "PyreflyDisplayWarnings",
-        ["PyreflyStubgen"],
-    )
-    env.expect.that_target(target).output_group("pyrefly_warnings").contains_at_least([
+def _expect_diagnostic_outputs(env, target):
+    _expect_check(env, target)
+    env.expect.that_target(target).output_group("pyrefly_fulltext").contains_exactly([
+        "tests/consumer/stale_expected_failure_pyrefly_fulltext.txt",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_json").contains_exactly([
+        "tests/consumer/stale_expected_failure_pyrefly.json",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_sarif").contains_exactly([
+        "tests/consumer/stale_expected_failure_pyrefly.sarif",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_warnings").contains_exactly([
         "tests/consumer/stale_expected_failure_pyrefly_display_warnings.marker",
     ])
 
-def _test_warning_outputs_do_not_propagate(name):
-    """A parent's warning group does not include a ratcheted dependency's output."""
+def _test_diagnostic_outputs_do_not_propagate(name):
+    """A parent's diagnostic groups contain only its own check outputs."""
     py_library(
         name = name + "_subject",
         srcs = ["consumer.py"],
@@ -343,14 +354,24 @@ def _test_warning_outputs_do_not_propagate(name):
     )
     analysis_test(
         name = name,
-        impl = _expect_no_warning_output,
+        impl = _expect_direct_diagnostic_outputs,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
     )
 
-def _expect_no_warning_output(env, target):
-    if OutputGroupInfo in target and hasattr(target[OutputGroupInfo], "pyrefly_warnings"):
-        env.fail("unexpected transitive pyrefly_warnings output group for {}".format(target.label))
+def _expect_direct_diagnostic_outputs(env, target):
+    env.expect.that_target(target).output_group("pyrefly_fulltext").contains_exactly([
+        "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly_fulltext.txt",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_json").contains_exactly([
+        "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly.json",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_sarif").contains_exactly([
+        "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly.sarif",
+    ])
+    env.expect.that_target(target).output_group("pyrefly_warnings").contains_exactly([
+        "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly_display_warnings.marker",
+    ])
 
 def _test_update_aspect_selects_direct_baseline_output(name):
     """The on-demand aspect publishes one direct updated baseline artifact."""
@@ -408,7 +429,7 @@ def aspect_test_suite(name):
             _test_update_aspect_selects_direct_baseline_output,
             _test_validation_outputs_propagate,
             _test_otlp_trace_outputs_are_direct,
-            _test_expected_failure_exposes_warning_output_group,
-            _test_warning_outputs_do_not_propagate,
+            _test_check_exposes_diagnostic_output_groups,
+            _test_diagnostic_outputs_do_not_propagate,
         ],
     )

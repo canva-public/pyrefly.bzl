@@ -78,8 +78,10 @@ def test_cli_dispatches_all_subcommands(
                 "display-warnings",
                 "--output-marker",
                 "display.marker",
-                "--warning-file",
-                "warning.txt",
+                "--check-marker",
+                "check.marker",
+                "--fulltext-output",
+                "fulltext.txt",
             ]
         )
         == 0
@@ -122,6 +124,12 @@ def test_cli_dispatches_all_subcommands(
                 "3.12.7",
                 "--output-marker",
                 "marker",
+                "--output-fulltext",
+                "fulltext.txt",
+                "--output-json",
+                "report.json",
+                "--output-sarif",
+                "report.sarif",
                 "--target-label",
                 "//app:lib",
                 "--stale-message",
@@ -181,13 +189,17 @@ def test_cli_dispatches_all_subcommands(
     assert checks[0].source_file == [Path("app.py")]
     assert checks[0].bazel_bin_dir == Path("bin")
     assert checks[0].output_marker == Path("marker")
+    assert checks[0].output_fulltext == Path("fulltext.txt")
+    assert checks[0].output_json == Path("report.json")
+    assert checks[0].output_sarif == Path("report.sarif")
     assert checks[0].python_platform == "linux"
     assert checks[0].python_version == "3.12.7"
     assert checks[0].target_label == "//app:lib"
     assert checks[0].stale_message == "remove %s"
     assert len(displays) == 1
     assert displays[0].output_marker == Path("display.marker")
-    assert displays[0].warning_file == Path("warning.txt")
+    assert displays[0].check_marker == Path("check.marker")
+    assert displays[0].fulltext_output == Path("fulltext.txt")
     assert len(extracts) == 1
     assert extracts[0].input_config == Path("pyproject.toml")
     assert extracts[0].output_config == Path("pyrefly.toml")

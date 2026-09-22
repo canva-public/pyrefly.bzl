@@ -65,6 +65,18 @@ Type checks run as [validation actions](https://bazel.build/extending/rules#vali
 can be toggled with Bazel's
 [`--run_validations` flag](https://bazel.build/reference/command-line-reference#build-flag--run_validations).
 
+### Diagnostic outputs
+
+Each check exposes its report through the `pyrefly_fulltext`, `pyrefly_json`, and `pyrefly_sarif`
+output groups. For example:
+
+```shell
+bazel build --output_groups=+pyrefly_json //path/to:target
+```
+
+The `pyrefly_warnings` output group displays the full-text report when a target fails as expected or
+contains warning-level findings. It prints nothing for a clean target.
+
 ## Toolchain
 
 To allow `pyrefly.bzl` to manage the Pyrefly toolchain, provide the version of Pyrefly to use:
@@ -283,10 +295,6 @@ bazel build --output_groups=+pyrefly_otlp_traces //path/to:target
 
 ## Future improvements
 
-- Expose Pyrefly results through Bazel output groups in machine-readable formats such as JSON,
-  [SARIF](https://github.com/facebook/pyrefly/issues/4205), and JUnit XML. Supporting multiple
-  formats from a single check action may depend on
-  [Pyrefly support for multiple simultaneous outputs](https://github.com/facebook/pyrefly/issues/4375).
 - Add aspect-integrated support for `pyrefly suppress`, `pyrefly infer`, and
   `pyrefly suppress --remove-unused`, emitting generated patch files through an output group.
 
