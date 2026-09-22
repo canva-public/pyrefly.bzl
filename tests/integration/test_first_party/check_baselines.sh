@@ -165,19 +165,11 @@ run_baseline_updater \
   --target_pattern_file="$updater_backup_dir/target-patterns.txt"
 
 baselines_dir="pyrefly_baselines/tests/baselines"
-if grep -F 'stale-error' "$baselines_dir/baselined_failure.json" >/dev/null; then
-  echo "Updated baseline retained an error from the checked-in baseline" >&2
-  exit 1
-fi
-grep -F 'bad-assignment' "$baselines_dir/baselined_failure.json" >/dev/null
-grep -F 'bad-assignment' "$baselines_dir/failure.json" >/dev/null
-grep -F '"description": ""' "$baselines_dir/baselined_failure.json" >/dev/null
 generated_baseline="$bazel_bin/tests/baselines/baselined_failure_pyrefly_updated_baseline.json"
-if grep -F '"description": ""' "$generated_baseline" >/dev/null; then
-  echo "Baseline post-processing modified the Bazel output" >&2
-  exit 1
-fi
-grep -F '"description": "' "$generated_baseline" >/dev/null
+cmp "$generated_baseline" "$baselines_dir/baselined_failure.json"
+cmp \
+  "$bazel_bin/tests/baselines/failure_pyrefly_updated_baseline.json" \
+  "$baselines_dir/failure.json"
 test ! -e "$baselines_dir/clean.json"
 cmp "$updater_backup_dir/baseline_cache_b.json" "$baselines_dir/baseline_cache_b.json"
 "${bazel[@]}" build \
@@ -202,6 +194,7 @@ if grep -F "PyreflyUpdateBaseline" <<<"$cached_update_output" >/dev/null; then
   exit 1
 fi
 run_baseline_updater //tests/baselines:baselined_failure
+cmp "$generated_baseline" "$baselines_dir/baselined_failure.json"
 
 restore_updater_fixtures
 trap - EXIT

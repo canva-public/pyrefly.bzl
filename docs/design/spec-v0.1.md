@@ -186,8 +186,8 @@ Normal check actions declare only the matching file.
 
 The registry is executable. Its run environment supplies `PYREFLY_UPDATE_ASPECT`, and the updater
 uses that value for the nested Bazel build. Fresh update actions do not consume existing baseline
-files. The updater reads output-to-label associations from the Build Event Protocol, sanitises
-unstable descriptions, and creates, updates, or removes source files.
+files. The updater reads output-to-label associations from the Build Event Protocol before copying
+non-empty outputs verbatim or removing source files for empty outputs.
 
 ## Hermetic execution
 

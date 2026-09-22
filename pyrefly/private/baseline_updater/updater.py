@@ -149,16 +149,11 @@ def copy_updated_baselines(
             else:
                 unchanged += 1
             continue
-        for error in errors:
-            error["description"] = ""
-        sanitized_content = (
-            json.dumps(document, indent=2, ensure_ascii=False) + "\n"
-        ).encode()
-        if destination.exists() and destination.read_bytes() == sanitized_content:
+        if destination.exists() and destination.read_bytes() == content:
             unchanged += 1
             continue
         existed = destination.exists()
-        _atomic_write(destination, sanitized_content)
+        _atomic_write(destination, content)
         if existed:
             updated += 1
             verb = "Updated"
