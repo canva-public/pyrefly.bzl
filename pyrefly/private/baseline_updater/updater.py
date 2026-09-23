@@ -1,4 +1,4 @@
-"""Run Bazel's baseline-update aspect and copy its outputs into the workspace."""
+"""Run the Pyrefly aspect in baseline-update mode and copy its outputs."""
 
 from __future__ import annotations
 
@@ -15,6 +15,7 @@ from typing import Any
 from urllib.parse import unquote, urlparse
 
 _OUTPUT_GROUP = "pyrefly_updated_baseline"
+_ASPECT_MODE = "update_baseline"
 
 
 class BaselineUpdaterError(RuntimeError):
@@ -167,7 +168,6 @@ def copy_updated_baselines(
 def _run_build(
     bazel: str,
     workspace: Path,
-    update_aspect: str,
     target_patterns: list[str],
     build_event_file: Path,
     target_pattern_file: Path | None = None,
@@ -175,7 +175,7 @@ def _run_build(
     command = [
         bazel,
         "build",
-        f"--aspects={update_aspect}",
+        f"--aspects_parameters=pyrefly_mode={_ASPECT_MODE}",
         f"--output_groups={_OUTPUT_GROUP}",
         "--run_validations=false",
         "--remote_download_outputs=toplevel",
@@ -222,7 +222,6 @@ def main(argv: list[str] | None = None) -> int:
                 "BUILD_WORKSPACE_DIRECTORY is not set; run this target with bazel run"
             )
         baselines_package = os.environ["PYREFLY_BASELINES_PACKAGE"]
-        update_aspect = os.environ["PYREFLY_UPDATE_ASPECT"]
         workspace = Path(workspace_value)
         working_directory = Path(
             os.environ.get("BUILD_WORKING_DIRECTORY", workspace_value)
@@ -236,7 +235,6 @@ def main(argv: list[str] | None = None) -> int:
             returncode = _run_build(
                 bazel,
                 workspace,
-                update_aspect,
                 target_patterns,
                 build_event_file,
                 target_pattern_file,

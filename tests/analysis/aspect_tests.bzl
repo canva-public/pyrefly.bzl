@@ -3,14 +3,9 @@
 load("@rules_python//python:defs.bzl", "PyInfo", "py_library")
 load("@rules_testing//lib:analysis_test.bzl", "analysis_test", "test_suite")
 load("@rules_testing//lib:util.bzl", "TestingAspectInfo", "util")
-load(
-    "//tools/pyrefly:pyrefly_aspects.bzl",
-    "pyrefly_aspect",
-    "pyrefly_update_baseline_aspect",
-)
+load("//tools/pyrefly:pyrefly_aspects.bzl", "pyrefly_aspect")
 
 _testing_aspect = util.make_testing_aspect([pyrefly_aspect])
-_update_testing_aspect = util.make_testing_aspect([pyrefly_update_baseline_aspect])
 _SUBJECT_TAGS = ["manual"]
 
 def _generated_python_impl(ctx):
@@ -118,7 +113,7 @@ def _expect_check(env, target):
         OutputGroupInfo in target and
         hasattr(target[OutputGroupInfo], "pyrefly_updated_baseline")
     ):
-        env.fail("the normal aspect exposed the baseline-update output group")
+        env.fail("check mode exposed the baseline-update output group")
 
 def _expect_minify(env, target):
     _expect_action_selection(
@@ -373,44 +368,6 @@ def _expect_direct_diagnostic_outputs(env, target):
         "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly_display_warnings.marker",
     ])
 
-def _test_update_aspect_selects_direct_baseline_output(name):
-    """The on-demand aspect publishes one direct updated baseline artifact."""
-    py_library(
-        name = name + "_dependency",
-        srcs = ["dependency.py"],
-        tags = _SUBJECT_TAGS,
-    )
-    py_library(
-        name = name + "_subject",
-        srcs = ["consumer.py"],
-        deps = [name + "_dependency"],
-        tags = _SUBJECT_TAGS,
-    )
-    analysis_test(
-        name = name,
-        impl = _expect_update_baseline_output,
-        target = name + "_subject",
-        testing_aspect = _update_testing_aspect,
-    )
-
-def _expect_update_baseline_output(env, target):
-    _expect_action_selection(
-        env,
-        target,
-        "PyreflyUpdateBaseline",
-        [],
-    )
-    env.expect.that_target(target).output_group(
-        "pyrefly_updated_baseline",
-    ).contains_exactly([
-        "{package}/test_update_aspect_selects_direct_baseline_output_subject_pyrefly_updated_baseline.json",
-    ])
-    env.expect.that_target(target).output_group(
-        "pyrefly_otlp_traces",
-    ).contains_at_least([
-        "{package}/test_update_aspect_selects_direct_baseline_output_subject_pyrefly_update_baseline_otlp_trace.jsonl",
-    ])
-
 def aspect_test_suite(name):
     test_suite(
         name = name,
@@ -426,7 +383,6 @@ def aspect_test_suite(name):
             _test_generated_tree_selects_minify,
             _test_empty_direct_pyinfo_selects_minify,
             _test_public_stubs_rule_selects_stubgen,
-            _test_update_aspect_selects_direct_baseline_output,
             _test_validation_outputs_propagate,
             _test_otlp_trace_outputs_are_direct,
             _test_check_exposes_diagnostic_output_groups,

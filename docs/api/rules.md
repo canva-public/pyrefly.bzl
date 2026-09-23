@@ -61,7 +61,7 @@ Declares the configuration consumed by Pyrefly aspects and rules.
 <pre>
 load("@pyrefly.bzl", "pyrefly_baselines")
 
-pyrefly_baselines(<a href="#pyrefly_baselines-name">name</a>, <a href="#pyrefly_baselines-srcs">srcs</a>, <a href="#pyrefly_baselines-update_aspect">update_aspect</a>)
+pyrefly_baselines(<a href="#pyrefly_baselines-name">name</a>, <a href="#pyrefly_baselines-srcs">srcs</a>)
 </pre>
 
 Collects per-target Pyrefly baseline JSON files.
@@ -73,7 +73,6 @@ Collects per-target Pyrefly baseline JSON files.
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="pyrefly_baselines-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="pyrefly_baselines-srcs"></a>srcs |  Source JSON baseline files whose package-relative paths mirror checked target labels.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
-| <a id="pyrefly_baselines-update_aspect"></a>update_aspect |  Workspace aspect spec in <bzl-label>%<symbol> form for the baseline-update aspect.   | String | required |  |
 
 
 <a id="pyrefly_stubs"></a>

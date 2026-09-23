@@ -147,7 +147,6 @@ expect_only_a_baseline_check
 restore_baseline_a
 trap - EXIT
 
-update_aspect="//:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect"
 normal_update_actions="$("${bazel[@]}" aquery \
   'mnemonic("PyreflyUpdateBaseline", //tests/baselines:baselined_failure)' 2>&1)"
 if grep -F "PyreflyUpdateBaseline" <<<"$normal_update_actions" >/dev/null; then
@@ -157,7 +156,7 @@ if grep -F "PyreflyUpdateBaseline" <<<"$normal_update_actions" >/dev/null; then
 fi
 
 update_action="$("${bazel[@]}" aquery \
-  --aspects="$update_aspect" \
+  --aspects_parameters=pyrefly_mode=update_baseline \
   --include_artifacts \
   --output_groups=pyrefly_updated_baseline \
   'mnemonic("PyreflyUpdateBaseline", //tests/baselines:baselined_failure)' 2>&1)"
@@ -173,11 +172,13 @@ run_baseline_updater() {
 }
 
 updater_backup_dir="$(mktemp -d)"
+cp .bazelrc "$updater_backup_dir/bazelrc"
 cp pyrefly_baselines/tests/baselines/baselined_failure.json \
   "$updater_backup_dir/baselined_failure.json"
 cp pyrefly_baselines/tests/baselines/baseline_cache_b.json \
   "$updater_backup_dir/baseline_cache_b.json"
 restore_updater_fixtures() {
+  cp "$updater_backup_dir/bazelrc" .bazelrc
   cp "$updater_backup_dir/baselined_failure.json" \
     pyrefly_baselines/tests/baselines/baselined_failure.json
   cp "$updater_backup_dir/baseline_cache_b.json" \
@@ -185,12 +186,15 @@ restore_updater_fixtures() {
   rm -f \
     pyrefly_baselines/tests/baselines/clean.json \
     pyrefly_baselines/tests/baselines/failure.json \
+    "$updater_backup_dir/bazelrc" \
     "$updater_backup_dir/baselined_failure.json" \
     "$updater_backup_dir/baseline_cache_b.json" \
     "$updater_backup_dir/target-patterns.txt"
   rmdir "$updater_backup_dir"
 }
 trap restore_updater_fixtures EXIT
+
+printf '\nbuild --output_groups=+pyrefly_warnings\n' >>.bazelrc
 
 printf '{"errors": [{"name": "stale-error"}]}\n' \
   >pyrefly_baselines/tests/baselines/baselined_failure.json
@@ -203,6 +207,7 @@ printf '%s\n' \
   >"$updater_backup_dir/target-patterns.txt"
 run_baseline_updater \
   --target_pattern_file="$updater_backup_dir/target-patterns.txt"
+cp "$updater_backup_dir/bazelrc" .bazelrc
 
 baselines_dir="pyrefly_baselines/tests/baselines"
 generated_baseline="$bazel_bin/tests/baselines/baselined_failure_pyrefly_updated_baseline.json"
@@ -219,7 +224,7 @@ cmp "$updater_backup_dir/baseline_cache_b.json" "$baselines_dir/baseline_cache_b
 update_build=(
   "${bazel[@]}"
   build
-  --aspects="$update_aspect"
+  --aspects_parameters=pyrefly_mode=update_baseline
   --output_groups=pyrefly_updated_baseline
   --run_validations=false
   //tests/baselines:baselined_failure

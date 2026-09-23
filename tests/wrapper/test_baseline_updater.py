@@ -14,11 +14,11 @@ def _write_baseline(path: Path, errors: list[dict[str, object]]) -> None:
     path.write_text(json.dumps({"errors": errors}, indent=2) + "\n")
 
 
-def test_run_build_forwards_workspace_update_aspect(
+def test_run_build_selects_update_mode(
     tmp_path: Path,
     monkeypatch: pytest.MonkeyPatch,
 ) -> None:
-    """The nested Bazel build uses the aspect configured by the workspace."""
+    """The nested build selects update mode on the configured Pyrefly aspect."""
     observed: list[list[str]] = []
 
     def run(command: list[str], **_kwargs: object) -> subprocess.CompletedProcess[str]:
@@ -26,20 +26,17 @@ def test_run_build_forwards_workspace_update_aspect(
         return subprocess.CompletedProcess(command, 0)
 
     monkeypatch.setattr(baseline_updater.subprocess, "run", run)
-    update_aspect = "//tools/pyrefly:aspects.bzl%update"
-
     assert (
         baseline_updater._run_build(
             "bazel",
             tmp_path,
-            update_aspect,
             ["//app:lib"],
             tmp_path / "events.json",
         )
         == 0
     )
 
-    assert f"--aspects={update_aspect}" in observed[0]
+    assert "--aspects_parameters=pyrefly_mode=update_baseline" in observed[0]
 
 
 def test_read_updated_baselines_resolves_nested_named_sets(tmp_path: Path) -> None:

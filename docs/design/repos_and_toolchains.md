@@ -6,10 +6,10 @@ aspect definitions in the main workspace own all analysis policy.
 
 ## Ownership model
 
-| Owner            | Responsibility                                                                                                   |
-| ---------------- | ---------------------------------------------------------------------------------------------------------------- |
-| Main workspace   | `pyrefly_configuration`, normal and update aspects, baselines, tag policy, expected failures, and stub selection |
-| Module extension | Version validation, custom-executable validation, platform downloads, and registered toolchain repositories      |
+| Owner            | Responsibility                                                                                              |
+| ---------------- | ----------------------------------------------------------------------------------------------------------- |
+| Main workspace   | `pyrefly_configuration`, the Pyrefly aspect, baselines, tag policy, expected failures, and stub selection   |
+| Module extension | Version validation, custom-executable validation, platform downloads, and registered toolchain repositories |
 
 This keeps configuration labels in the repository mapping where they were written and makes the
 aspect entry point explicit in `.bazelrc`. There is no generated configuration repository,
@@ -63,18 +63,14 @@ during analysis. Malformed TOML and a missing `[tool.pyrefly]` table fail the ex
 
 ## Aspects
 
-The main workspace creates its normal aspect with one configuration label. The update aspect is
-created from the normal aspect and the same label. Both factories reject non-`Label` configuration
-arguments.
+The main workspace creates one aspect with one configuration label. The factory rejects non-`Label`
+configuration arguments. The aspect resolves Pyrefly through the stable toolchain type and reads
+both configuration providers from its `_pyrefly_config` attribute.
 
-The normal aspect resolves Pyrefly through the stable toolchain type and reads both configuration
-providers from its `_pyrefly_config` attribute. It publishes baseline-independent check inputs for
-the update aspect. Normal builds contain no `PyreflyUpdateBaseline` action.
-
-The update aspect reuses the normal aspect's dependency materialisation graph and registers a fresh
-baseline action only when explicitly selected. `pyrefly_baselines(update_aspect = ...)` places the
-workspace aspect string in `PYREFLY_UPDATE_ASPECT`; the updater forwards it to its nested
-`bazel build`.
+The aspect defaults to check mode, which registers validation actions and no `PyreflyUpdateBaseline`
+actions. The executable baseline registry runs its nested build in baseline-update mode. That mode
+reuses the same dependency materialisation graph, registers a fresh baseline action for each
+eligible target, and suppresses the corresponding check action.
 
 ## Action inputs
 

@@ -195,27 +195,7 @@ load("@pyrefly.bzl", "pyrefly_baselines")
 pyrefly_baselines(
     name = "baselines",
     srcs = glob(["**/*.json"], allow_empty = True),
-    update_aspect = "//tools/pyrefly:aspects.bzl%pyrefly_update_baseline_aspect",
     visibility = ["//visibility:public"],
-)
-```
-
-The `pyrefly_update_baseline_aspect` should be declared alongside the validation aspect, e.g. in
-`//tools/pyrefly:aspects.bzl`:
-
-```starlark
-load(
-    "@pyrefly.bzl",
-    "make_pyrefly_aspect",
-    "make_pyrefly_update_baseline_aspect",
-)
-
-_CONFIGURATION = Label("//tools/pyrefly:config")
-
-pyrefly_aspect = make_pyrefly_aspect(configuration = _CONFIGURATION)
-pyrefly_update_baseline_aspect = make_pyrefly_update_baseline_aspect(
-    pyrefly_aspect = pyrefly_aspect,
-    configuration = _CONFIGURATION,
 )
 ```
 
@@ -253,6 +233,8 @@ If a target has no errors, its existing baseline is removed.
 Arguments after `--` must be target patterns or the target-pattern file option described below;
 other Bazel options are not supported. The updater invokes a nested `bazel build`, using the
 executable named by the `BAZEL` environment variable when set and `bazel` otherwise.
+
+This workflow assumes the Pyrefly aspect is enabled in a `.bazelrc` file.
 
 For a long target list, supply one pattern per line through Bazel's target-pattern file interface:
 

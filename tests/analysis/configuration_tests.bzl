@@ -204,7 +204,6 @@ def configuration_test_suite(name):
         name = name + "_baselines",
         srcs = ["root_target.json"],
         tags = ["manual"],
-        update_aspect = "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
     )
     pyrefly_configuration(
         name = name + "_contract_subject",

@@ -3,7 +3,6 @@
 load(
     "@pyrefly.bzl",
     "make_pyrefly_aspect",
-    "make_pyrefly_update_baseline_aspect",
 )
 load(
     "@pyrefly_integration_testlib//:pyrefly_check.bzl",
@@ -16,10 +15,6 @@ _STRICT_CONFIGURATION = Label("//:strict_pyrefly_config")
 
 pyrefly_aspect = make_pyrefly_aspect(configuration = _CONFIGURATION)
 _strict_pyrefly_aspect = make_pyrefly_aspect(configuration = _STRICT_CONFIGURATION)
-pyrefly_update_baseline_aspect = make_pyrefly_update_baseline_aspect(
-    pyrefly_aspect = pyrefly_aspect,
-    configuration = _CONFIGURATION,
-)
 
 _PYREFLY_CHECK_RULES = _make_pyrefly_check_rules(pyrefly_aspect)
 _STRICT_PYREFLY_CHECK_RULES = _make_pyrefly_check_rules(_strict_pyrefly_aspect)

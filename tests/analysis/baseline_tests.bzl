@@ -26,9 +26,6 @@ def _expect_baseline_mapping(env, target):
         env.fail("expected default files {}, got {}".format(expected.values(), default_files.keys()))
     if target[DefaultInfo].files_to_run.executable == None:
         env.fail("expected the baseline registry to be executable")
-    update_aspect = target[RunEnvironmentInfo].environment.get("PYREFLY_UPDATE_ASPECT")
-    if update_aspect != "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect":
-        env.fail("unexpected baseline update aspect {}".format(update_aspect))
 
 def _expect_source_file_failure(env, target):
     """Generated JSON outputs cannot be used as checked-in baselines."""
@@ -51,7 +48,6 @@ def baseline_test_suite(name):
             "root_target.json",
         ],
         tags = ["manual"],
-        update_aspect = "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
     )
     mapping_test = name + "_mapping"
     analysis_test(
@@ -70,7 +66,6 @@ def baseline_test_suite(name):
         name = name + "_generated_subject",
         srcs = [name + "_generated_json"],
         tags = ["manual"],
-        update_aspect = "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
     )
     generated_test = name + "_rejects_generated"
     analysis_test(
@@ -84,7 +79,6 @@ def baseline_test_suite(name):
         name = name + "_outside_package_subject",
         srcs = ["//tests/fixtures:baseline.json"],
         tags = ["manual"],
-        update_aspect = "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
     )
     outside_package_test = name + "_rejects_outside_package"
     analysis_test(

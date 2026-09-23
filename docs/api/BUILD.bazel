@@ -6,7 +6,6 @@ api_doc(
     input = "//:pyrefly.bzl",
     symbol_names = [
         "make_pyrefly_aspect",
-        "make_pyrefly_update_baseline_aspect",
     ],
     deps = ["//:defs"],
 )

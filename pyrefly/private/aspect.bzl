@@ -20,6 +20,8 @@ load(":pyrefly_stubs.bzl", "create_pyrefly_stubgen_action")
 
 _MAIN_REPOSITORY = ""
 _LOG_LEVEL = Label("@pyrefly.bzl//pyrefly:log_level")
+_MODE_CHECK = "check"
+_MODE_UPDATE_BASELINE = "update_baseline"
 _PYREFLY_TOOLCHAIN_TYPE = Label("//pyrefly:toolchain_type")
 _PYTHON_IMPORT_ALL_REPOSITORIES = Label(
     "@rules_python//python/config_settings:experimental_python_import_all_repositories",
@@ -202,6 +204,25 @@ def _aspect_impl(target, ctx):
     )
     result = [info, check_inputs]
     if should_check:
+        if ctx.attr.pyrefly_mode == _MODE_UPDATE_BASELINE:
+            update_outputs = create_pyrefly_update_baseline_action(
+                ctx,
+                target,
+                check_sources,
+                target_inputs,
+                target_imports,
+                dependency_info,
+                pyrefly,
+                target_environment,
+            )
+            result.append(OutputGroupInfo(
+                pyrefly_otlp_traces = depset([
+                    transformed_result.otlp_trace,
+                    update_outputs.otlp_trace,
+                ]),
+                pyrefly_updated_baseline = depset([update_outputs.output]),
+            ))
+            return result
         baseline = config.baselines.get(target.label)
         check_outputs = create_pyrefly_check_action(
             ctx,
@@ -237,28 +258,6 @@ def _aspect_impl(target, ctx):
         result.append(OutputGroupInfo(pyrefly_otlp_traces = otlp_traces))
     return result
 
-def _update_baseline_aspect_impl(target, ctx):
-    check_inputs = target[PyreflyCheckInputsInfo]
-    if not check_inputs.enabled:
-        return []
-
-    result = create_pyrefly_update_baseline_action(
-        ctx,
-        target,
-        check_inputs.check_sources,
-        check_inputs.target_inputs,
-        check_inputs.target_imports,
-        check_inputs.dependency_info,
-        ctx.toolchains[_PYREFLY_TOOLCHAIN_TYPE].files_to_run,
-        ctx.attr._pyrefly_config[PyreflyTargetEnvironmentInfo],
-    )
-    return [
-        OutputGroupInfo(
-            pyrefly_otlp_traces = depset([result.otlp_trace]),
-            pyrefly_updated_baseline = depset([result.output]),
-        ),
-    ]
-
 def _check_action_attrs(configuration):
     if type(configuration) != "Label":
         fail("configuration must be a Label")
@@ -288,6 +287,10 @@ def make_pyrefly_aspect(configuration):
             default = _PYTHON_IMPORT_ALL_REPOSITORIES,
             providers = [BuildSettingInfo],
         ),
+        "pyrefly_mode": attr.string(
+            default = _MODE_CHECK,
+            values = [_MODE_CHECK, _MODE_UPDATE_BASELINE],
+        ),
     })
     return aspect(
         implementation = _aspect_impl,
@@ -300,27 +303,5 @@ def make_pyrefly_aspect(configuration):
         doc = "Type-checks source targets and propagates hermetic Python inputs.",
         provides = [PyreflyCheckInputsInfo, PyreflyInfo],
         required_providers = [[PyInfo]],
-        toolchains = [_PYREFLY_TOOLCHAIN_TYPE],
-    )
-
-def make_pyrefly_update_baseline_aspect(
-        pyrefly_aspect,
-        configuration):
-    """Construct the on-demand aspect which generates fresh baselines.
-
-    Args:
-        pyrefly_aspect: Validation aspect returned by make_pyrefly_aspect.
-        configuration: Label of the pyrefly_configuration target used by pyrefly_aspect.
-
-    Returns:
-        An aspect which publishes fresh baseline files through pyrefly_updated_baseline.
-    """
-    return aspect(
-        implementation = _update_baseline_aspect_impl,
-        attrs = _check_action_attrs(configuration),
-        doc = "Generates fresh per-target Pyrefly baseline files on demand.",
-        required_aspect_providers = [[PyreflyCheckInputsInfo]],
-        required_providers = [[PyInfo]],
-        requires = [pyrefly_aspect],
         toolchains = [_PYREFLY_TOOLCHAIN_TYPE],
     )
