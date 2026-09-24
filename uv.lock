@@ -87,7 +87,7 @@ wheels = [
 
 [[package]]
 name = "pyrefly-bzl"
-version = "0.2.0"
+version = "0.3.0"
 source = { virtual = "." }
 dependencies = [
     { name = "opentelemetry-exporter-otlp-json-file" },

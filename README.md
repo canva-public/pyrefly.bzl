@@ -12,10 +12,10 @@ competing ruleset.
 Register the Pyrefly toolchain in a `MODULE.bazel` file:
 
 ```starlark
-bazel_dep(name = "pyrefly.bzl", version = "0.2.0")
+bazel_dep(name = "pyrefly.bzl", version = "0.3.0")
 
 pyrefly = use_extension("@pyrefly.bzl", "pyrefly")
-pyrefly.toolchain(version = "1.1.1")
+pyrefly.toolchain(version = "1.3.0")
 use_repo(pyrefly, "pyrefly_toolchain")
 
 register_toolchains("@pyrefly_toolchain//:all")
@@ -82,7 +82,7 @@ contains warning-level findings. It prints nothing for a clean target.
 To allow `pyrefly.bzl` to manage the Pyrefly toolchain, provide the version of Pyrefly to use:
 
 ```starlark
-pyrefly.toolchain(version = "1.1.1")
+pyrefly.toolchain(version = "1.3.0")
 ```
 
 To bring your own toolchain instead, provide an executable target:
@@ -96,7 +96,7 @@ mutually exclusive. Registered versions are downloaded from
 [Pyrefly's GitHub releases](https://github.com/facebook/pyrefly/releases), with support for Linux
 (musl) and macOS on x86-64 and Arm64.
 
-Per-target baseline pruning requires Pyrefly 1.3.0 or later.
+The Pyrefly aspect is compatible with Pyrefly 1.3.0 or higher.
 
 ## Configuration
 
