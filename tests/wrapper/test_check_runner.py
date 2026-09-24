@@ -178,6 +178,34 @@ def test_baseline_is_pruned_into_declared_output_with_warning(
     assert caplog.records[-1].levelno == logging.WARNING
 
 
+def test_unchanged_baseline_passes_without_stale_warning(
+    tmp_path: Path,
+    caplog: pytest.LogCaptureFixture,
+) -> None:
+    """A baseline with no stale entries passes strict pruning unchanged."""
+    source = _source(tmp_path, 'value: int = "wrong"\n')
+    input_baseline = tmp_path / "input-baseline.json"
+    assert (
+        update_baseline_runner.run(_update_args(tmp_path, source, input_baseline)) == 0
+    )
+    pruned_baseline = tmp_path / "outputs" / "pruned-baseline.json"
+    args = replace(
+        _args(tmp_path, source),
+        baseline=input_baseline,
+        error_stale_baseline=True,
+        pruned_baseline=pruned_baseline,
+    )
+
+    with caplog.at_level(
+        logging.WARNING,
+        logger="pyrefly.private.wrapper.check_runner",
+    ):
+        assert check_runner.run(args) == 0
+
+    assert pruned_baseline.read_bytes() == input_baseline.read_bytes()
+    assert "contains stale entries" not in caplog.text
+
+
 def test_error_stale_baseline_fails_with_copy_command(
     tmp_path: Path,
     caplog: pytest.LogCaptureFixture,
