@@ -76,6 +76,8 @@ def _expect_configuration_contract(env, target):
     baseline = config.baselines.get(Label("//:root_target"))
     if not baseline or baseline.short_path != "tests/analysis/root_target.json":
         env.fail("configuration did not retain the baseline mapping")
+    if not config.error_stale_baseline:
+        env.fail("configuration did not retain error_stale_baseline")
 
 def _expect_pyproject_extraction(env, target):
     """A pyproject input becomes one derived pyrefly.toml action output."""
@@ -202,12 +204,12 @@ def configuration_test_suite(name):
         name = name + "_baselines",
         srcs = ["root_target.json"],
         tags = ["manual"],
-        update_aspect = "//tools/pyrefly:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect",
     )
     pyrefly_configuration(
         name = name + "_contract_subject",
         baselines = name + "_baselines",
         config = "pyrefly.toml",
+        error_stale_baseline = True,
         expected_failures = [name + "_nonexistent_expected_failure"],
         stub_packages = {
             name + "_runtime_z_alias": name + "_stubs_z_alias",

@@ -4,6 +4,8 @@ from __future__ import annotations
 
 import json
 import logging
+import shlex
+import shutil
 import tempfile
 from collections.abc import Sequence
 from pathlib import Path
@@ -84,6 +86,29 @@ def _write_marker(
             "exit_code": exit_code,
             "has_warnings": has_warnings,
         },
+    )
+
+
+def _report_stale_baseline(
+    target_label: str,
+    baseline: Path,
+    pruned_baseline: Path,
+    *,
+    error: bool,
+) -> None:
+    """Report a stale baseline with a command that fixes the source file."""
+    with pruned_baseline.open(encoding="utf-8") as baseline_file:
+        pruned_document = json.load(baseline_file)
+    if pruned_document["errors"]:
+        fix_command = shlex.join(["cp", str(pruned_baseline), str(baseline)])
+    else:
+        fix_command = shlex.join(["rm", str(baseline)])
+    log = logger.error if error else logger.warning
+    log(
+        "Pyrefly baseline for %s contains stale entries. "
+        "Run the following command to remove them:\n    %s",
+        target_label,
+        fix_command,
     )
 
 
@@ -221,6 +246,8 @@ def invoke(
                 if baseline is None:
                     raise WrapperError("A baseline output is required for an update")
                 command.extend(["--baseline", baseline, "--update-baseline"])
+            elif baseline is not None:
+                command.append("--prune-baseline")
             with tracer.start_as_current_span(
                 f"pyrefly.wrapper.{trace_prefix}.run-pyrefly",
                 attributes={
@@ -228,6 +255,8 @@ def invoke(
                     "pyrefly.timeout.seconds": args.timeout,
                 },
             ) as span:
+                if baseline is not None and not update_baseline:
+                    span.set_attribute("pyrefly.baseline.prune", True)
                 result = run_command(
                     command,
                     cwd=Path.cwd(),
@@ -247,10 +276,29 @@ def run(args: CheckOptions) -> int:
         args.output_sarif,
     ):
         output.parent.mkdir(parents=True, exist_ok=True)
+    if args.baseline is None:
+        if args.pruned_baseline is not None:
+            raise WrapperError("--pruned-baseline requires --baseline")
+        if args.error_stale_baseline:
+            raise WrapperError("--error-stale-baseline requires --baseline")
+        baseline = None
+    else:
+        if args.pruned_baseline is None:
+            raise WrapperError("--baseline requires --pruned-baseline")
+        with tracer.start_as_current_span(
+            "pyrefly.wrapper.check.prepare-baseline"
+        ) as span:
+            args.pruned_baseline.parent.mkdir(parents=True, exist_ok=True)
+            shutil.copyfile(args.baseline, args.pruned_baseline)
+            span.set_attribute(
+                "pyrefly.baseline.size",
+                args.pruned_baseline.stat().st_size,
+            )
+        baseline = args.pruned_baseline
     try:
         result = invoke(
             args,
-            baseline=args.baseline,
+            baseline=baseline,
             diagnostic_outputs=(
                 ("full-text", args.output_fulltext),
                 ("json", args.output_json),
@@ -269,7 +317,6 @@ def run(args: CheckOptions) -> int:
         _write_empty_outputs(args)
         _write_marker(args, exit_code=0, has_warnings=False)
         return 0
-
     logger.debug(
         "Pyrefly check for %s completed with exit code %d",
         args.target_label,
@@ -286,6 +333,26 @@ def run(args: CheckOptions) -> int:
         )
         return INFRASTRUCTURE_EXIT_CODE
 
+    stale_baseline_paths: tuple[Path, Path] | None = None
+    if args.baseline is not None:
+        with tracer.start_as_current_span(
+            "pyrefly.wrapper.check.detect-stale-baseline"
+        ) as span:
+            # Pyrefly rejects --error-stale-baseline with --prune-baseline, so
+            # detect stale entries by comparing the declared pruned copy instead.
+            baseline_source = args.baseline
+            pruned_baseline = args.pruned_baseline
+            if pruned_baseline is None:
+                raise WrapperError("--baseline requires --pruned-baseline")
+            baseline_size = baseline_source.stat().st_size
+            pruned_baseline_size = pruned_baseline.stat().st_size
+            baseline_is_stale = baseline_size != pruned_baseline_size
+            span.set_attribute("pyrefly.baseline.original_size", baseline_size)
+            span.set_attribute("pyrefly.baseline.pruned_size", pruned_baseline_size)
+            span.set_attribute("pyrefly.baseline.stale", baseline_is_stale)
+            if baseline_is_stale:
+                stale_baseline_paths = (baseline_source, pruned_baseline)
+
     findings = _read_findings(args.output_json)
     has_warnings = any(finding.get("severity") == "warn" for finding in findings)
     _write_marker(
@@ -299,6 +366,23 @@ def run(args: CheckOptions) -> int:
     )
     type_check_failed = has_type_errors or (result.returncode == 1 and not findings)
     fulltext = args.output_fulltext.read_text(encoding="utf-8").rstrip("\n")
+    if stale_baseline_paths is not None:
+        if type_check_failed and fulltext:
+            logger.error(fulltext)
+        elif result.output:
+            logger.debug(result.output.rstrip("\n"))
+        baseline_source, pruned_baseline = stale_baseline_paths
+        with tracer.start_as_current_span(
+            "pyrefly.wrapper.check.report-stale-baseline"
+        ):
+            _report_stale_baseline(
+                args.target_label,
+                baseline_source,
+                pruned_baseline,
+                error=args.error_stale_baseline,
+            )
+        if args.error_stale_baseline:
+            return 1
     if type_check_failed and args.expected_to_fail:
         if fulltext:
             logger.warning(fulltext)

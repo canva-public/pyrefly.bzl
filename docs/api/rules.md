@@ -10,11 +10,12 @@ Public API for pyrefly.bzl.
 load("@pyrefly.bzl", "pyrefly_configuration")
 
 pyrefly_configuration(*, <a href="#pyrefly_configuration-name">name</a>, <a href="#pyrefly_configuration-aspect_hints">aspect_hints</a>, <a href="#pyrefly_configuration-baselines">baselines</a>, <a href="#pyrefly_configuration-compatible_with">compatible_with</a>, <a href="#pyrefly_configuration-config">config</a>, <a href="#pyrefly_configuration-deprecation">deprecation</a>,
-                      <a href="#pyrefly_configuration-exclude_tags">exclude_tags</a>, <a href="#pyrefly_configuration-exec_compatible_with">exec_compatible_with</a>, <a href="#pyrefly_configuration-exec_group_compatible_with">exec_group_compatible_with</a>, <a href="#pyrefly_configuration-exec_properties">exec_properties</a>,
-                      <a href="#pyrefly_configuration-expected_failures">expected_failures</a>, <a href="#pyrefly_configuration-features">features</a>, <a href="#pyrefly_configuration-include_tags">include_tags</a>, <a href="#pyrefly_configuration-package_metadata">package_metadata</a>, <a href="#pyrefly_configuration-restricted_to">restricted_to</a>,
-                      <a href="#pyrefly_configuration-stale_message">stale_message</a>, <a href="#pyrefly_configuration-stub_packages">stub_packages</a>, <a href="#pyrefly_configuration-stubgen_exclude">stubgen_exclude</a>, <a href="#pyrefly_configuration-stubgen_include">stubgen_include</a>,
-                      <a href="#pyrefly_configuration-stubgen_include_docstrings">stubgen_include_docstrings</a>, <a href="#pyrefly_configuration-stubgen_include_private">stubgen_include_private</a>, <a href="#pyrefly_configuration-tags">tags</a>,
-                      <a href="#pyrefly_configuration-target_compatible_with">target_compatible_with</a>, <a href="#pyrefly_configuration-testonly">testonly</a>, <a href="#pyrefly_configuration-toolchains">toolchains</a>, <a href="#pyrefly_configuration-visibility">visibility</a>)
+                      <a href="#pyrefly_configuration-error_stale_baseline">error_stale_baseline</a>, <a href="#pyrefly_configuration-exclude_tags">exclude_tags</a>, <a href="#pyrefly_configuration-exec_compatible_with">exec_compatible_with</a>,
+                      <a href="#pyrefly_configuration-exec_group_compatible_with">exec_group_compatible_with</a>, <a href="#pyrefly_configuration-exec_properties">exec_properties</a>, <a href="#pyrefly_configuration-expected_failures">expected_failures</a>, <a href="#pyrefly_configuration-features">features</a>,
+                      <a href="#pyrefly_configuration-include_tags">include_tags</a>, <a href="#pyrefly_configuration-package_metadata">package_metadata</a>, <a href="#pyrefly_configuration-restricted_to">restricted_to</a>, <a href="#pyrefly_configuration-stale_message">stale_message</a>, <a href="#pyrefly_configuration-stub_packages">stub_packages</a>,
+                      <a href="#pyrefly_configuration-stubgen_exclude">stubgen_exclude</a>, <a href="#pyrefly_configuration-stubgen_include">stubgen_include</a>, <a href="#pyrefly_configuration-stubgen_include_docstrings">stubgen_include_docstrings</a>,
+                      <a href="#pyrefly_configuration-stubgen_include_private">stubgen_include_private</a>, <a href="#pyrefly_configuration-tags">tags</a>, <a href="#pyrefly_configuration-target_compatible_with">target_compatible_with</a>, <a href="#pyrefly_configuration-testonly">testonly</a>, <a href="#pyrefly_configuration-toolchains">toolchains</a>,
+                      <a href="#pyrefly_configuration-visibility">visibility</a>)
 </pre>
 
 Declares the configuration consumed by Pyrefly aspects and rules.
@@ -30,6 +31,7 @@ Declares the configuration consumed by Pyrefly aspects and rules.
 | <a id="pyrefly_configuration-compatible_with"></a>compatible_with |  <a href="https://bazel.build/reference/be/common-definitions#common.compatible_with">Inherited rule attribute</a>   | <a href="https://bazel.build/concepts/labels">List of labels</a>; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
 | <a id="pyrefly_configuration-config"></a>config |  Optional pyrefly.toml or pyproject.toml file containing Pyrefly configuration.   | <a href="https://bazel.build/concepts/labels">Label</a> | optional |  `None`  |
 | <a id="pyrefly_configuration-deprecation"></a>deprecation |  <a href="https://bazel.build/reference/be/common-definitions#common.deprecation">Inherited rule attribute</a>   | String; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
+| <a id="pyrefly_configuration-error_stale_baseline"></a>error_stale_baseline |  Whether check actions fail when their baseline contains stale entries.   | Boolean | optional |  `False`  |
 | <a id="pyrefly_configuration-exclude_tags"></a>exclude_tags |  Target tags which disable checking. Mutually exclusive with include_tags.   | List of strings | optional |  `[]`  |
 | <a id="pyrefly_configuration-exec_compatible_with"></a>exec_compatible_with |  <a href="https://bazel.build/reference/be/common-definitions#common.exec_compatible_with">Inherited rule attribute</a>   | <a href="https://bazel.build/concepts/labels">List of labels</a>; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
 | <a id="pyrefly_configuration-exec_group_compatible_with"></a>exec_group_compatible_with |  <a href="https://bazel.build/reference/be/common-definitions#common.exec_group_compatible_with">Inherited rule attribute</a>   | Dictionary: String -> List of labels; <a href="https://bazel.build/reference/be/common-definitions#configurable-attributes">nonconfigurable</a> | optional |  `None`  |
@@ -59,7 +61,7 @@ Declares the configuration consumed by Pyrefly aspects and rules.
 <pre>
 load("@pyrefly.bzl", "pyrefly_baselines")
 
-pyrefly_baselines(<a href="#pyrefly_baselines-name">name</a>, <a href="#pyrefly_baselines-srcs">srcs</a>, <a href="#pyrefly_baselines-update_aspect">update_aspect</a>)
+pyrefly_baselines(<a href="#pyrefly_baselines-name">name</a>, <a href="#pyrefly_baselines-srcs">srcs</a>)
 </pre>
 
 Collects per-target Pyrefly baseline JSON files.
@@ -71,7 +73,6 @@ Collects per-target Pyrefly baseline JSON files.
 | :------------- | :------------- | :------------- | :------------- | :------------- |
 | <a id="pyrefly_baselines-name"></a>name |  A unique name for this target.   | <a href="https://bazel.build/concepts/labels#target-names">Name</a> | required |  |
 | <a id="pyrefly_baselines-srcs"></a>srcs |  Source JSON baseline files whose package-relative paths mirror checked target labels.   | <a href="https://bazel.build/concepts/labels">List of labels</a> | optional |  `[]`  |
-| <a id="pyrefly_baselines-update_aspect"></a>update_aspect |  Workspace aspect spec in <bzl-label>%<symbol> form for the baseline-update aspect.   | String | required |  |
 
 
 <a id="pyrefly_stubs"></a>

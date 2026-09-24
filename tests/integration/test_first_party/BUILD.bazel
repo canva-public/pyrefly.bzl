@@ -23,3 +23,12 @@ Pyrefly passed on target `%s`, but it is listed in the expected failures. Run th
     ],
     visibility = ["//visibility:public"],
 )
+
+pyrefly_configuration(
+    name = "strict_pyrefly_config",
+    baselines = "//pyrefly_baselines:baselines",
+    config = ":pyproject.toml",
+    error_stale_baseline = True,
+    tags = ["manual"],
+    visibility = ["//visibility:public"],
+)

@@ -26,12 +26,18 @@ def make_pyrefly_check_rules(pyrefly_aspect):
     return struct(
         inputs = rule(
             implementation = _pyrefly_check_inputs_impl,
-            attrs = {"target": target_attr},
+            attrs = {
+                "pyrefly_mode": attr.string(default = "check"),
+                "target": target_attr,
+            },
             doc = "Exposes the PyreflyInfo sources used to check a target.",
         ),
         validation = rule(
             implementation = _pyrefly_check_validation_impl,
-            attrs = {"target": target_attr},
+            attrs = {
+                "pyrefly_mode": attr.string(default = "check"),
+                "target": target_attr,
+            },
         ),
     )
 

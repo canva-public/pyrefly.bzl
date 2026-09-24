@@ -16,8 +16,6 @@ def _target_label(repository_name, relative_path):
     return Label("@@{}//{}:{}".format(repository_name, package, name))
 
 def _pyrefly_baselines_impl(ctx):
-    if not ctx.attr.update_aspect:
-        fail("update_aspect must name a project-local baseline-update aspect")
     baselines = {}
     for file in ctx.files.srcs:
         if not file.is_source:
@@ -54,7 +52,6 @@ def _pyrefly_baselines_impl(ctx):
         RunEnvironmentInfo(
             environment = {
                 "PYREFLY_BASELINES_PACKAGE": ctx.label.package,
-                "PYREFLY_UPDATE_ASPECT": ctx.attr.update_aspect,
             },
             inherited_environment = ["BAZEL"],
         ),
@@ -66,10 +63,6 @@ pyrefly_baselines = rule(
         "srcs": attr.label_list(
             allow_files = [".json"],
             doc = "Source JSON baseline files whose package-relative paths mirror checked target labels.",
-        ),
-        "update_aspect": attr.string(
-            doc = "Workspace aspect spec in <bzl-label>%<symbol> form for the baseline-update aspect.",
-            mandatory = True,
         ),
         "_updater": attr.label(
             default = Label("//pyrefly/private/baseline_updater"),

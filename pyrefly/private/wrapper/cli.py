@@ -135,6 +135,8 @@ class CheckOptions(ImportOptions):
     output_sarif: Path
     target_label: str
     baseline: Path | None = None
+    pruned_baseline: Path | None = None
+    error_stale_baseline: bool = False
     source_file: list[Path] = field(
         default_factory=list,
         action="append",

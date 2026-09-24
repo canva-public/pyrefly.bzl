@@ -43,6 +43,41 @@ targets=(
 )
 "${bazel[@]}" build "${targets[@]}"
 bazel_bin="$("${bazel[@]}" info bazel-bin)"
+source_baseline="pyrefly_baselines/tests/baselines/baselined_failure.json"
+pruned_baseline="$bazel_bin/tests/baselines/baselined_failure_pyrefly_pruned_baseline.json"
+grep -F 'stale baseline fixture' "$source_baseline" >/dev/null
+grep -F 'bad-assignment' "$pruned_baseline" >/dev/null
+if grep -F 'stale baseline fixture' "$pruned_baseline" >/dev/null; then
+  echo "Pruned baseline retained a stale entry" >&2
+  exit 1
+fi
+validation_outputs="$("${bazel[@]}" cquery \
+  --output=files \
+  //tests/baselines:baselined_failure_test_validation)"
+if ! grep -F 'baselined_failure_pyrefly_pruned_baseline.json' \
+  <<<"$validation_outputs" >/dev/null; then
+  echo "Validation outputs did not contain the pruned baseline" >&2
+  printf '%s\n' "$validation_outputs" >&2
+  exit 1
+fi
+set +e
+strict_output="$("${bazel[@]}" build \
+  //tests/baselines:baselined_failure_strict_check 2>&1)"
+strict_status=$?
+set -e
+if [[ "$strict_status" -eq 0 ]]; then
+  echo "Expected stale baseline validation to fail" >&2
+  printf '%s\n' "$strict_output" >&2
+  exit 1
+fi
+if ! grep -F 'contains stale entries' <<<"$strict_output" >/dev/null || \
+  ! grep -F 'cp bazel-out/' <<<"$strict_output" >/dev/null || \
+  ! grep -F "baselined_failure_pyrefly_pruned_baseline.json $source_baseline" \
+    <<<"$strict_output" >/dev/null; then
+  echo "Stale baseline failure did not contain the expected copy command" >&2
+  printf '%s\n' "$strict_output" >&2
+  exit 1
+fi
 
 assert_action_baseline() {
   local target="$1"
@@ -55,6 +90,11 @@ assert_action_baseline() {
   if ! grep -F "pyrefly_baselines/tests/baselines/$expected_baseline.json" \
     <<<"$output" >/dev/null; then
     echo "Expected $target check inputs to contain $expected_baseline.json" >&2
+    printf '%s\n' "$output" >&2
+    exit 1
+  fi
+  if ! grep -F -- "--pruned-baseline" <<<"$output" >/dev/null; then
+    echo "Expected $target check to declare a pruned baseline output" >&2
     printf '%s\n' "$output" >&2
     exit 1
   fi
@@ -107,7 +147,6 @@ expect_only_a_baseline_check
 restore_baseline_a
 trap - EXIT
 
-update_aspect="//:pyrefly_aspects.bzl%pyrefly_update_baseline_aspect"
 normal_update_actions="$("${bazel[@]}" aquery \
   'mnemonic("PyreflyUpdateBaseline", //tests/baselines:baselined_failure)' 2>&1)"
 if grep -F "PyreflyUpdateBaseline" <<<"$normal_update_actions" >/dev/null; then
@@ -117,7 +156,7 @@ if grep -F "PyreflyUpdateBaseline" <<<"$normal_update_actions" >/dev/null; then
 fi
 
 update_action="$("${bazel[@]}" aquery \
-  --aspects="$update_aspect" \
+  --aspects_parameters=pyrefly_mode=update_baseline \
   --include_artifacts \
   --output_groups=pyrefly_updated_baseline \
   'mnemonic("PyreflyUpdateBaseline", //tests/baselines:baselined_failure)' 2>&1)"
@@ -133,11 +172,13 @@ run_baseline_updater() {
 }
 
 updater_backup_dir="$(mktemp -d)"
+cp .bazelrc "$updater_backup_dir/bazelrc"
 cp pyrefly_baselines/tests/baselines/baselined_failure.json \
   "$updater_backup_dir/baselined_failure.json"
 cp pyrefly_baselines/tests/baselines/baseline_cache_b.json \
   "$updater_backup_dir/baseline_cache_b.json"
 restore_updater_fixtures() {
+  cp "$updater_backup_dir/bazelrc" .bazelrc
   cp "$updater_backup_dir/baselined_failure.json" \
     pyrefly_baselines/tests/baselines/baselined_failure.json
   cp "$updater_backup_dir/baseline_cache_b.json" \
@@ -145,12 +186,15 @@ restore_updater_fixtures() {
   rm -f \
     pyrefly_baselines/tests/baselines/clean.json \
     pyrefly_baselines/tests/baselines/failure.json \
+    "$updater_backup_dir/bazelrc" \
     "$updater_backup_dir/baselined_failure.json" \
     "$updater_backup_dir/baseline_cache_b.json" \
     "$updater_backup_dir/target-patterns.txt"
   rmdir "$updater_backup_dir"
 }
 trap restore_updater_fixtures EXIT
+
+printf '\nbuild --output_groups=+pyrefly_warnings\n' >>.bazelrc
 
 printf '{"errors": [{"name": "stale-error"}]}\n' \
   >pyrefly_baselines/tests/baselines/baselined_failure.json
@@ -163,6 +207,7 @@ printf '%s\n' \
   >"$updater_backup_dir/target-patterns.txt"
 run_baseline_updater \
   --target_pattern_file="$updater_backup_dir/target-patterns.txt"
+cp "$updater_backup_dir/bazelrc" .bazelrc
 
 baselines_dir="pyrefly_baselines/tests/baselines"
 generated_baseline="$bazel_bin/tests/baselines/baselined_failure_pyrefly_updated_baseline.json"
@@ -179,7 +224,7 @@ cmp "$updater_backup_dir/baseline_cache_b.json" "$baselines_dir/baseline_cache_b
 update_build=(
   "${bazel[@]}"
   build
-  --aspects="$update_aspect"
+  --aspects_parameters=pyrefly_mode=update_baseline
   --output_groups=pyrefly_updated_baseline
   --run_validations=false
   //tests/baselines:baselined_failure

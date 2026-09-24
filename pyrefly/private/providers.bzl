@@ -12,6 +12,7 @@ PyreflyConfigInfo = provider(
     fields = {
         "base_config": "Optional effective pyrefly.toml File.",
         "baselines": "Dictionary mapping target Labels to baseline JSON Files.",
+        "error_stale_baseline": "Whether stale baseline entries fail check actions.",
         "exclude_tags": "Set of tags which suppress Pyrefly check actions.",
         "expected_failure_labels": "Set of canonical target labels.",
         "include_tags": "Set of tags which enable Pyrefly check actions.",
