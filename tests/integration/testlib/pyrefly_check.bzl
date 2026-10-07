@@ -27,6 +27,7 @@ def make_pyrefly_check_rules(pyrefly_aspect):
         inputs = rule(
             implementation = _pyrefly_check_inputs_impl,
             attrs = {
+                "pyrefly_display_warnings": attr.bool(default = False),
                 "pyrefly_mode": attr.string(default = "check"),
                 "target": target_attr,
             },
@@ -35,6 +36,7 @@ def make_pyrefly_check_rules(pyrefly_aspect):
         validation = rule(
             implementation = _pyrefly_check_validation_impl,
             attrs = {
+                "pyrefly_display_warnings": attr.bool(default = False),
                 "pyrefly_mode": attr.string(default = "check"),
                 "target": target_attr,
             },

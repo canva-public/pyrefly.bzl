@@ -244,7 +244,6 @@ def _aspect_impl(target, ctx):
                 [transformed_result.otlp_trace] + check_outputs.otlp_traces,
             ),
             pyrefly_sarif = check_outputs.sarif,
-            pyrefly_warnings = check_outputs.warnings,
         ))
         return result
     if transitive_validation:
@@ -291,6 +290,7 @@ def make_pyrefly_aspect(configuration):
             default = _MODE_CHECK,
             values = [_MODE_CHECK, _MODE_UPDATE_BASELINE],
         ),
+        "pyrefly_display_warnings": attr.bool(default = False),
     })
     return aspect(
         implementation = _aspect_impl,

@@ -164,12 +164,15 @@ then runs `pyrefly check --config`.
 | ------------------------------- | ---------------- | ------------------------------------------ |
 | Clean                           | No               | Success                                    |
 | Type errors                     | No               | Failure                                    |
-| Type errors                     | Yes              | Success with warning output                |
+| Type errors                     | Yes              | Success with optional warning display      |
 | Clean                           | Yes              | Failure because the ratchet entry is stale |
 | Infrastructure error or timeout | Either           | Failure                                    |
 
 Each `%s` in `stale_message` is replaced with the canonical target label. Expected failures are
 available only through the configuration provider; there is no generated Starlark export.
+
+`--aspects_parameters=pyrefly_display_warnings=true` enables warning display for checked targets and
+their checked dependencies through validation actions. Warning display is disabled by default.
 
 ## Baselines
 

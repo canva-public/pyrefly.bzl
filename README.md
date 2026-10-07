@@ -74,8 +74,15 @@ output groups. For example:
 bazel build --output_groups=+pyrefly_json //path/to:target
 ```
 
-The `pyrefly_warnings` output group displays the full-text report when a target fails as expected or
-contains warning-level findings. It prints nothing for a clean target.
+Set `--aspects_parameters=pyrefly_display_warnings=true` to display the full-text report for checked
+targets that fail as expected or contain warning-level findings, including dependencies:
+
+```shell
+bazel build --aspects_parameters=pyrefly_display_warnings=true //path/to:target
+```
+
+Warning display defaults to `false` and prints nothing for a clean target. It replaces the
+`pyrefly_warnings` output group.
 
 ## Toolchain
 
@@ -267,9 +274,8 @@ pyrefly_configuration(
 Type-checking will still run on these targets, however the results will be effectively inverted:
 
 - If the target fails type-checking as expected, the action will exit zero and record its findings
-  as warnings. The warnings will only be displayed in Bazel's output if the `pyrefly_warnings`
-  output group is requested - to prevent bloating your CI logs, you may wish to request this only
-  when developing locally.
+  as warnings. To display those warnings, set `--aspects_parameters=pyrefly_display_warnings=true`.
+  You may wish to enable this only when developing locally to keep CI logs concise.
 - If the target passes type-checking, the action will exit non-zero with an error message
   instructing the user to remove the target from the expected failure list.
 

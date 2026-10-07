@@ -194,7 +194,7 @@ restore_updater_fixtures() {
 }
 trap restore_updater_fixtures EXIT
 
-printf '\nbuild --output_groups=+pyrefly_warnings\n' >>.bazelrc
+printf '\nbuild --aspects_parameters=pyrefly_display_warnings=true\n' >>.bazelrc
 
 printf '{"errors": [{"name": "stale-error"}]}\n' \
   >pyrefly_baselines/tests/baselines/baselined_failure.json

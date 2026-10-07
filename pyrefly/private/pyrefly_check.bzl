@@ -134,39 +134,42 @@ def create_pyrefly_check_action(
         tools = [pyrefly],
         use_default_shell_env = True,
     )
-    display_marker = ctx.actions.declare_file(
-        target.label.name + "_pyrefly_display_warnings.marker",
-    )
-    display_args = ctx.actions.args()
-    display_args.add("display-warnings")
-    display_args.add("--output-marker")
-    display_args.add(display_marker)
-    display_args.add("--check-marker")
-    display_args.add(marker)
-    display_args.add("--fulltext-output")
-    display_args.add(fulltext_output)
-    display_trace = declare_otlp_trace(
-        ctx,
-        display_args,
-        target.label.name + "_pyrefly_display_warnings",
-    )
+    otlp_traces = [check_trace]
+    if ctx.attr.pyrefly_display_warnings:
+        display_marker = ctx.actions.declare_file(
+            target.label.name + "_pyrefly_display_warnings.marker",
+        )
+        display_args = ctx.actions.args()
+        display_args.add("display-warnings")
+        display_args.add("--output-marker")
+        display_args.add(display_marker)
+        display_args.add("--check-marker")
+        display_args.add(marker)
+        display_args.add("--fulltext-output")
+        display_args.add(fulltext_output)
+        display_trace = declare_otlp_trace(
+            ctx,
+            display_args,
+            target.label.name + "_pyrefly_display_warnings",
+        )
 
-    ctx.actions.run(
-        executable = config.wrapper,
-        arguments = [display_args],
-        inputs = [marker, fulltext_output],
-        outputs = [display_marker, display_trace],
-        mnemonic = "PyreflyDisplayWarnings",
-        progress_message = "Displaying Pyrefly warnings for %{label}",
-    )
+        ctx.actions.run(
+            executable = config.wrapper,
+            arguments = [display_args],
+            inputs = [marker, fulltext_output],
+            outputs = [display_marker, display_trace],
+            mnemonic = "PyreflyDisplayWarnings",
+            progress_message = "Displaying Pyrefly warnings for %{label}",
+        )
+        otlp_traces.append(display_trace)
+        validation_outputs.append(display_marker)
 
     return struct(
         fulltext = depset([fulltext_output]),
         json = depset([json_output]),
-        otlp_traces = [check_trace, display_trace],
+        otlp_traces = otlp_traces,
         sarif = depset([sarif_output]),
         validation = depset(validation_outputs, transitive = transitive_validation),
-        warnings = depset([display_marker]),
     )
 
 def create_pyrefly_update_baseline_action(
