@@ -308,7 +308,7 @@
     "@@rules_bazel_integration_test+//:extensions.bzl%bazel_binaries": {
       "general": {
         "bzlTransitiveDigest": "XC9nqZ31LIbq8N7cEK+rYa2iXNQLcJ3cyGWw+zPZlc0=",
-        "usagesDigest": "7r3+r0lUgoMhnIlQczWghAxWxBekHUUbNaQoxYMKf0E=",
+        "usagesDigest": "3TOTuMvRkH7e+rFbcTZcvy78zYmzrlWyCMTZ4GDzBC0=",
         "recordedInputs": [
           "REPO_MAPPING:rules_bazel_integration_test+,bazel_skylib bazel_skylib+",
           "REPO_MAPPING:rules_bazel_integration_test+,cgrindel_bazel_starlib cgrindel_bazel_starlib+"
