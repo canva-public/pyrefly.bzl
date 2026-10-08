@@ -101,13 +101,7 @@ def _expect_check(env, target):
         env,
         target,
         "PyreflyCheck",
-        ["PyreflyStubgen", "PyreflyUpdateBaseline"],
-    )
-    _expect_action_selection(
-        env,
-        target,
-        "PyreflyDisplayWarnings",
-        [],
+        ["PyreflyDisplayWarnings", "PyreflyStubgen", "PyreflyUpdateBaseline"],
     )
     if (
         OutputGroupInfo in target and
@@ -120,7 +114,7 @@ def _expect_minify(env, target):
         env,
         target,
         "PyreflyMinify",
-        ["PyreflyCheck", "PyreflyStubgen"],
+        ["PyreflyCheck", "PyreflyDisplayWarnings", "PyreflyStubgen"],
     )
 
 def _expect_stubgen(env, target):
@@ -128,7 +122,7 @@ def _expect_stubgen(env, target):
         env,
         target,
         "PyreflyStubgen",
-        ["PyreflyCheck", "PyreflyMinify"],
+        ["PyreflyCheck", "PyreflyDisplayWarnings", "PyreflyMinify"],
     )
 
 def _test_first_party_source_selects_check(name):
@@ -143,6 +137,7 @@ def _test_first_party_source_selects_check(name):
         impl = _expect_check,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_configured_stub_mapping_selects_stubgen(name):
@@ -152,6 +147,7 @@ def _test_configured_stub_mapping_selects_stubgen(name):
         impl = _expect_stubgen,
         target = "@pyrefly_test_targets//:configured",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_exact_alias_exclusion_selects_minify(name):
@@ -161,6 +157,7 @@ def _test_exact_alias_exclusion_selects_minify(name):
         impl = _expect_minify,
         target = "@pyrefly_test_targets//:skipped",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_unmatched_target_selects_minify(name):
@@ -170,6 +167,7 @@ def _test_unmatched_target_selects_minify(name):
         impl = _expect_minify,
         target = "@pyrefly_test_targets//:unmatched",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_exact_alias_inclusion_selects_stubgen(name):
@@ -179,6 +177,7 @@ def _test_exact_alias_inclusion_selects_stubgen(name):
         impl = _expect_stubgen,
         target = "@pyrefly_test_targets//:automatic",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_excluded_package_group_selects_minify(name):
@@ -188,6 +187,7 @@ def _test_excluded_package_group_selects_minify(name):
         impl = _expect_minify,
         target = "@pyrefly_test_targets//nested:automatic",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_included_descendant_selects_stubgen(name):
@@ -197,6 +197,7 @@ def _test_included_descendant_selects_stubgen(name):
         impl = _expect_stubgen,
         target = "@pyrefly_test_targets//nested/deeper:automatic",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_generated_pyinfo_selects_minify(name):
@@ -210,6 +211,7 @@ def _test_generated_pyinfo_selects_minify(name):
         impl = _expect_minify,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_generated_tree_selects_minify(name):
@@ -223,6 +225,7 @@ def _test_generated_tree_selects_minify(name):
         impl = _expect_minify,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_empty_direct_pyinfo_selects_minify(name):
@@ -236,6 +239,7 @@ def _test_empty_direct_pyinfo_selects_minify(name):
         impl = _expect_minify,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _test_public_stubs_rule_selects_stubgen(name):
@@ -278,6 +282,7 @@ def _test_validation_outputs_propagate(name):
         impl = _expect_validation_outputs,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _expect_validation_outputs(env, target):
@@ -304,6 +309,7 @@ def _test_otlp_trace_outputs_are_direct(name):
         impl = _expect_direct_otlp_trace_outputs,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _expect_direct_otlp_trace_outputs(env, target):
@@ -312,16 +318,88 @@ def _expect_direct_otlp_trace_outputs(env, target):
     ).contains_exactly([
         "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_minify_otlp_trace.jsonl",
         "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_check_otlp_trace.jsonl",
-        "{package}/test_otlp_trace_outputs_are_direct_subject_pyrefly_display_warnings_otlp_trace.jsonl",
+    ])
+
+def _test_warning_display_parameter_selects_display_action(name):
+    """Enabling warning display registers a display action for a checked target."""
+    analysis_test(
+        name = name,
+        impl = _expect_warning_display_action,
+        target = "//tests/consumer:stale_expected_failure",
+        testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = True)},
+    )
+
+def _expect_warning_display_action(env, target):
+    _expect_action_selection(env, target, "PyreflyDisplayWarnings", [])
+
+def _test_warning_display_validation_outputs_propagate(name):
+    """Validation displays enabled warnings for the target and its dependencies."""
+    py_library(
+        name = name + "_dependency",
+        srcs = ["dependency.py"],
+        tags = _SUBJECT_TAGS,
+    )
+    py_library(
+        name = name + "_subject",
+        srcs = ["consumer.py"],
+        deps = [name + "_dependency"],
+        tags = _SUBJECT_TAGS,
+    )
+    analysis_test(
+        name = name,
+        impl = _expect_warning_display_validation_outputs,
+        target = name + "_subject",
+        testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = True)},
+    )
+
+def _expect_warning_display_validation_outputs(env, target):
+    env.expect.that_target(target).output_group("_validation").contains_exactly([
+        "{package}/test_warning_display_validation_outputs_propagate_dependency_pyrefly.marker",
+        "{package}/test_warning_display_validation_outputs_propagate_dependency_pyrefly_display_warnings.marker",
+        "{package}/test_warning_display_validation_outputs_propagate_subject_pyrefly.marker",
+        "{package}/test_warning_display_validation_outputs_propagate_subject_pyrefly_display_warnings.marker",
+    ])
+
+def _test_enabled_warning_trace_outputs_are_direct(name):
+    """Enabled warning display adds its direct trace without dependency traces."""
+    py_library(
+        name = name + "_dependency",
+        srcs = ["dependency.py"],
+        tags = _SUBJECT_TAGS,
+    )
+    py_library(
+        name = name + "_subject",
+        srcs = ["consumer.py"],
+        deps = [name + "_dependency"],
+        tags = _SUBJECT_TAGS,
+    )
+    analysis_test(
+        name = name,
+        impl = _expect_direct_enabled_warning_trace_outputs,
+        target = name + "_subject",
+        testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = True)},
+    )
+
+def _expect_direct_enabled_warning_trace_outputs(env, target):
+    env.expect.that_target(target).output_group(
+        "pyrefly_otlp_traces",
+    ).contains_exactly([
+        "{package}/test_enabled_warning_trace_outputs_are_direct_subject_pyrefly_minify_otlp_trace.jsonl",
+        "{package}/test_enabled_warning_trace_outputs_are_direct_subject_pyrefly_check_otlp_trace.jsonl",
+        "{package}/test_enabled_warning_trace_outputs_are_direct_subject_pyrefly_display_warnings_otlp_trace.jsonl",
     ])
 
 def _test_check_exposes_diagnostic_output_groups(name):
-    """Every check exposes full-text, JSON, SARIF, and warning outputs."""
+    """Every check exposes full-text, JSON, and SARIF diagnostic outputs."""
     analysis_test(
         name = name,
         impl = _expect_diagnostic_outputs,
         target = "//tests/consumer:stale_expected_failure",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _expect_diagnostic_outputs(env, target):
@@ -334,9 +412,6 @@ def _expect_diagnostic_outputs(env, target):
     ])
     env.expect.that_target(target).output_group("pyrefly_sarif").contains_exactly([
         "tests/consumer/stale_expected_failure_pyrefly.sarif",
-    ])
-    env.expect.that_target(target).output_group("pyrefly_warnings").contains_exactly([
-        "tests/consumer/stale_expected_failure_pyrefly_display_warnings.marker",
     ])
 
 def _test_diagnostic_outputs_do_not_propagate(name):
@@ -352,6 +427,7 @@ def _test_diagnostic_outputs_do_not_propagate(name):
         impl = _expect_direct_diagnostic_outputs,
         target = name + "_subject",
         testing_aspect = _testing_aspect,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
 def _expect_direct_diagnostic_outputs(env, target):
@@ -363,9 +439,6 @@ def _expect_direct_diagnostic_outputs(env, target):
     ])
     env.expect.that_target(target).output_group("pyrefly_sarif").contains_exactly([
         "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly.sarif",
-    ])
-    env.expect.that_target(target).output_group("pyrefly_warnings").contains_exactly([
-        "{package}/test_diagnostic_outputs_do_not_propagate_subject_pyrefly_display_warnings.marker",
     ])
 
 def aspect_test_suite(name):
@@ -385,6 +458,9 @@ def aspect_test_suite(name):
             _test_public_stubs_rule_selects_stubgen,
             _test_validation_outputs_propagate,
             _test_otlp_trace_outputs_are_direct,
+            _test_warning_display_parameter_selects_display_action,
+            _test_warning_display_validation_outputs_propagate,
+            _test_enabled_warning_trace_outputs_are_direct,
             _test_check_exposes_diagnostic_output_groups,
             _test_diagnostic_outputs_do_not_propagate,
         ],

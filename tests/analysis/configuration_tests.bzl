@@ -246,6 +246,7 @@ def configuration_test_suite(name):
         impl = _expect_check_uses_extracted_config,
         target = name + "_pyproject_check_subject",
         testing_aspect = _PYPROJECT_TESTING_ASPECT,
+        attrs = {"pyrefly_display_warnings": attr.bool(default = False)},
     )
 
     native.test_suite(

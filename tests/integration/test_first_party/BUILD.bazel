@@ -11,6 +11,7 @@ pyrefly_configuration(
         "skip-pyrefly-too",
     ],
     expected_failures = [
+        "//tests/checking/expected_failure:consumer",
         "//tests/checking/expected_failure:fixture",
         "//failing_tests/stale_expected_failure:fixture",
     ],

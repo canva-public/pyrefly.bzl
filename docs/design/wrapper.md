@@ -76,6 +76,12 @@ Expected failures are a strict ratchet:
 Missing executables, wrapper failures, Pyrefly subprocess timeouts, and Pyrefly infrastructure exit
 status `3` are always infrastructure failures.
 
+The `pyrefly_display_warnings` aspect parameter defaults to `false`. When enabled, the aspect
+registers a separate `PyreflyDisplayWarnings` action that reads the full-text report and prints it
+for expected failures or warning-level findings. Its marker belongs to the `_validation` output
+group, so normal builds display warnings for checked targets and their checked dependencies. Warning
+display does not change the check action.
+
 ## Baseline-update actions
 
 The baseline-update subcommand shares check preprocessing and configuration construction, but
@@ -171,7 +177,9 @@ infrastructure itself raises an exception.
 Each wrapper subcommand records a root OpenTelemetry span plus nested spans for its internal phases
 and subprocess calls in a declared OTLP/JSON Lines output. Spans include work-unit counts where
 relevant, and subprocess spans include their timeout and exit code. The aspect exposes traces from
-wrapper actions created directly for the target through the `pyrefly_otlp_traces` output group.
+wrapper actions created directly for the target through the `pyrefly_otlp_traces` output group. This
+includes `PyreflyDisplayWarnings` traces only when the `pyrefly_display_warnings` aspect parameter
+is enabled.
 
 The wrapper requires Python 3.11 or newer. It does not import Pyrefly as a Python package; the
 configured executable is always invoked as a separate process.
