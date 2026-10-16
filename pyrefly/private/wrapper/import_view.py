@@ -7,7 +7,9 @@ from collections.abc import Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
-from .config import merge_site_package_dirs, resolve_import_paths
+from opentelemetry import trace
+
+from .config import MergeStats, merge_site_package_dirs, resolve_import_paths
 from .input_context import DependencyContext
 from .transformed import transformed_import_roots
 from .utils import deduplicate_paths
@@ -85,7 +87,20 @@ def plan_import_view(
 
 def materialize_import_view(plan: ImportViewPlan) -> list[str]:
     """Materialize a planned import view as Pyrefly site-package paths."""
-    return merge_site_package_dirs(plan.ordered_roots)
+    roots = plan.ordered_roots
+    stats = MergeStats()
+    try:
+        return merge_site_package_dirs(roots, stats=stats)
+    finally:
+        trace.get_current_span().set_attributes(
+            {
+                "pyrefly.import_root.count": len(roots),
+                "pyrefly.import_view.entries_visited": stats.entries_visited,
+                "pyrefly.import_view.directory_collisions": stats.directory_collisions,
+                "pyrefly.import_view.symlinks_created": stats.symlinks_created,
+                "pyrefly.import_view.fallback": stats.fallback,
+            }
+        )
 
 
 def _stdlib_paths() -> list[Path]:

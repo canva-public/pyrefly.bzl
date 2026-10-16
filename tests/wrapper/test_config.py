@@ -297,3 +297,105 @@ def test_merge_falls_back_when_symlinks_fail(
     )
 
     assert config.merge_site_package_dirs([first, second]) == [str(first), str(second)]
+
+
+def test_merge_stats_count_directory_expansion_work(tmp_path: Path) -> None:
+    """Counters include revisits and removed links while preserving precedence."""
+    roots = [tmp_path / name for name in ("first", "second", "third")]
+    for root in roots:
+        (root / "sample").mkdir(parents=True)
+    (roots[0] / "sample" / "value.pyi").write_text("first")
+    (roots[1] / "sample" / "value.pyi").write_text("second")
+    (roots[2] / "sample" / "extra.pyi").touch()
+    stats = config.MergeStats()
+
+    merged = Path(config.merge_site_package_dirs(roots, stats=stats)[0])
+
+    assert (merged / "sample" / "value.pyi").read_text() == "first"
+    assert (merged / "sample" / "extra.pyi").is_file()
+    assert stats == config.MergeStats(
+        entries_visited=6,
+        directory_collisions=2,
+        symlinks_created=3,
+    )
+
+
+def test_merge_stats_include_skipped_entries_without_traversing_them(
+    tmp_path: Path,
+) -> None:
+    """Excluded metadata contributes one visit each and no symlink operations."""
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    skipped_names = (
+        "__pycache__",
+        ".pyrefly-import-roots",
+        ".pyrefly-mapped-stubs",
+        ".pyrefly-mapped-stub-dependencies",
+        "sample.dist-info",
+        "sample.data",
+    )
+    for name in skipped_names:
+        (first / name).mkdir()
+        (first / name / "ignored.pyi").touch()
+    (first / "module.pyi").touch()
+    stats = config.MergeStats()
+
+    merged = Path(config.merge_site_package_dirs([first, second], stats=stats)[0])
+
+    assert {entry.name for entry in merged.iterdir()} == {"module.pyi"}
+    assert stats == config.MergeStats(
+        entries_visited=len(skipped_names) + 1,
+        symlinks_created=1,
+    )
+
+
+@pytest.mark.parametrize("root_count", [0, 1])
+def test_merge_stats_report_no_work_when_merging_is_unnecessary(
+    tmp_path: Path,
+    root_count: int,
+) -> None:
+    """Zero or one input root is returned directly with zero merge work."""
+    root = tmp_path / "root"
+    root.mkdir()
+    (root / "module.pyi").touch()
+    roots = [root][:root_count]
+    stats = config.MergeStats()
+
+    assert config.merge_site_package_dirs(roots, stats=stats) == [
+        str(path) for path in roots
+    ]
+    assert stats == config.MergeStats()
+
+
+def test_merge_stats_preserve_completed_work_when_a_later_symlink_fails(
+    tmp_path: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    """Fallback retains partial work counts and excludes failed link attempts."""
+    first = tmp_path / "first"
+    second = tmp_path / "second"
+    first.mkdir()
+    second.mkdir()
+    (first / "a.pyi").touch()
+    (second / "b.pyi").touch()
+    original_symlink = config.os.symlink
+
+    def fail_later_symlink(source: Path, destination: Path) -> None:
+        if destination.name == "b.pyi":
+            raise OSError("Symlink creation failed")
+        original_symlink(source, destination)
+
+    monkeypatch.setattr(config.os, "symlink", fail_later_symlink)
+    stats = config.MergeStats()
+
+    assert config.merge_site_package_dirs([first, second], stats=stats) == [
+        str(first),
+        str(second),
+    ]
+    assert stats == config.MergeStats(
+        entries_visited=2,
+        symlinks_created=1,
+        fallback=True,
+    )
