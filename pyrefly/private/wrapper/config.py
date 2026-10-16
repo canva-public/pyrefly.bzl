@@ -39,6 +39,16 @@ class SourceLayout:
     effective_roots: tuple[Path, ...]
 
 
+@dataclass
+class MergeStats:
+    """Merge work, including repeated visits and links subsequently removed."""
+
+    entries_visited: int = 0
+    directory_collisions: int = 0
+    symlinks_created: int = 0
+    fallback: bool = False
+
+
 _BAZEL_OWNED_SETTINGS = frozenset(
     {
         "baseline",
@@ -249,6 +259,8 @@ def resolve_source_layout(
 
 def merge_site_package_dirs(
     directories: Sequence[Path],
+    *,
+    stats: MergeStats | None = None,
 ) -> list[str]:
     """Merge import roots with symlinks, retaining the list on any failure."""
     original = [str(path) for path in directories]
@@ -259,7 +271,7 @@ def merge_site_package_dirs(
         for directory in directories:
             if not directory.is_dir():
                 continue
-            _merge_tree(directory, merged)
+            _merge_tree(directory, merged, stats)
         logger.debug(
             "Merged %d site-package dirs into %s (%d entries)",
             len(directories),
@@ -268,6 +280,8 @@ def merge_site_package_dirs(
         )
         return [str(merged)]
     except OSError:
+        if stats is not None:
+            stats.fallback = True
         logger.warning(
             "Failed to merge site-package dirs via symlinks; "
             "falling back to original list",
@@ -306,21 +320,30 @@ def merge_matching_import_roots(
 def _merge_tree(
     source: Path,
     destination: Path,
+    stats: MergeStats | None,
 ) -> None:
     for entry in source.iterdir():
+        if stats is not None:
+            stats.entries_visited += 1
         if entry.name in _SKIP_MERGE_NAMES or entry.name.endswith(_SKIP_MERGE_SUFFIXES):
             continue
         target = destination / entry.name
         if not target.exists():
             os.symlink(entry.resolve(), target)
+            if stats is not None:
+                stats.symlinks_created += 1
         elif target.is_symlink() and entry.is_dir() and target.resolve().is_dir():
+            if stats is not None:
+                stats.directory_collisions += 1
             existing = target.resolve()
             target.unlink()
             target.mkdir()
-            _merge_tree(existing, target)
-            _merge_tree(entry.resolve(), target)
+            _merge_tree(existing, target, stats)
+            _merge_tree(entry.resolve(), target, stats)
         elif target.is_dir() and not target.is_symlink() and entry.is_dir():
-            _merge_tree(entry.resolve(), target)
+            if stats is not None:
+                stats.directory_collisions += 1
+            _merge_tree(entry.resolve(), target, stats)
 
 
 def dump_toml(settings: Mapping[str, Any]) -> str:

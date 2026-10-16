@@ -1,0 +1,22 @@
+load("@pyrefly_testlib//:pytest.bzl", "pytest_test")
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+
+py_library(
+    name = "merge_import_view_lib",
+    srcs = ["merge_import_view.py"],
+    deps = ["//pyrefly/private/wrapper:wrapper_lib"],
+)
+
+py_binary(
+    name = "merge_import_view",
+    legacy_create_init = 0,
+    main_module = "benchmarks.merge_import_view",
+    deps = [":merge_import_view_lib"],
+)
+
+pytest_test(
+    name = "merge_import_view_tests",
+    srcs = ["test_merge_import_view.py"],
+    args = ["-q"],
+    deps = [":merge_import_view_lib"],
+)

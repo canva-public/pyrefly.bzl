@@ -181,6 +181,23 @@ wrapper actions created directly for the target through the `pyrefly_otlp_traces
 includes `PyreflyDisplayWarnings` traces only when the `pyrefly_display_warnings` aspect parameter
 is enabled.
 
+The `materialize-import-view` spans for checks, stub generation, and baseline updates expose merge
+work as attributes:
+
+| Attribute                                  | Meaning                                                                                     |
+| ------------------------------------------ | ------------------------------------------------------------------------------------------- |
+| `pyrefly.import_root.count`                | Number of deduplicated import roots supplied to the merger.                                 |
+| `pyrefly.import_view.entries_visited`      | Directory entries examined, including skipped metadata and repeated visits.                 |
+| `pyrefly.import_view.directory_collisions` | Directory-to-directory collisions encountered while merging roots.                          |
+| `pyrefly.import_view.symlinks_created`     | Successful symlink creations, including temporary links removed during directory expansion. |
+| `pyrefly.import_view.fallback`             | Whether an operating-system error caused the merger to return the original import roots.    |
+
+These counters describe operations performed, rather than unique input files or final output size.
+They include partial work before a fallback; when zero or one root bypasses merging, all work
+counters are zero. Counting uses the existing traversal without additional filesystem scans. See the
+[import-view benchmarks](../../benchmarks/README.md) for repeatable measurements of disjoint
+packages, overlapping package paths, and duplicate physical roots.
+
 The wrapper requires Python 3.11 or newer. It does not import Pyrefly as a Python package; the
 configured executable is always invoked as a separate process.
 
