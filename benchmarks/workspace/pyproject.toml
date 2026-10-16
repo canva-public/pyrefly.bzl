@@ -1,0 +1,15 @@
+[project]
+name = "pyrefly-aspect-benchmark"
+version = "0.0.0"
+requires-python = ">=3.13,<3.14"
+dependencies = [
+  "cachetools==7.2.3",
+  "google-api-core==2.42.0",
+  "google-auth==2.56.3",
+  "google-cloud-storage==3.17.1",
+  "googleapis-common-protos==1.75.1",
+  "httpx==0.28.1",
+  "pydantic==2.12.5",
+]
+
+[tool.pyrefly]
