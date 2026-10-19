@@ -196,7 +196,7 @@ def action_report(
 
 
 def read_pyrefly_seconds(path: Path) -> float | None:
-    """Sum the Pyrefly subprocess spans; unavailable traces leave reporting blank."""
+    """Sum Pyrefly subprocess spans, raising on malformed trace data."""
     durations = []
     try:
         with path.open(encoding="utf-8") as source:
@@ -214,10 +214,12 @@ def read_pyrefly_seconds(path: Path) -> float | None:
                                     span["startTimeUnixNano"]
                                 )
                                 if duration < 0:
-                                    return None
+                                    raise ValueError(
+                                        "Pyrefly span ends before it starts"
+                                    )
                                 durations.append(duration)
-    except (OSError, ValueError, KeyError, TypeError, AttributeError):
-        return None
+    except (ValueError, KeyError, TypeError, AttributeError) as error:
+        raise ValueError(f"Cannot parse OTLP trace {path}: {error}") from error
     return sum(durations) / 1_000_000_000 if durations else None
 
 
@@ -231,12 +233,18 @@ def timing_totals(actions: Sequence[dict[str, Any]]) -> dict[str, float | None]:
     }
 
 
-def timing_medians(samples: Sequence[dict[str, Any]]) -> dict[str, float | None]:
+def timing_statistics(samples: Sequence[dict[str, Any]]) -> dict[str, float | None]:
     return {
-        f"median_{field}": statistics.median(sample[field] for sample in samples)
+        f"{name}_{field}": calculate(sample[field] for sample in samples)
         if all(sample[field] is not None for sample in samples)
         else None
         for field in TIMING_FIELDS
+        for name, calculate in (
+            ("median", statistics.median),
+            ("min", min),
+            ("max", max),
+            ("stddev", statistics.pstdev),
+        )
     }
 
 
@@ -291,7 +299,10 @@ def benchmark(
         "jobs": jobs,
         "repeats": repeats,
         "median_action_seconds": statistics.median(elapsed_times),
-        **timing_medians(samples),
+        "min_action_seconds": min(elapsed_times),
+        "max_action_seconds": max(elapsed_times),
+        "stddev_action_seconds": statistics.pstdev(elapsed_times),
+        **timing_statistics(samples),
         "per_action": [
             {
                 "target": target,
@@ -299,7 +310,12 @@ def benchmark(
                 "median_seconds": statistics.median(
                     action["execution_seconds"] for action in values
                 ),
-                **timing_medians(values),
+                "min_seconds": min(action["execution_seconds"] for action in values),
+                "max_seconds": max(action["execution_seconds"] for action in values),
+                "stddev_seconds": statistics.pstdev(
+                    action["execution_seconds"] for action in values
+                ),
+                **timing_statistics(values),
             }
             for (target, mnemonic), values in sorted(per_action.items())
         ],
@@ -357,9 +373,11 @@ def main(argv: Sequence[str] | None = None) -> None:
                 json.dumps(
                     {
                         "scenario": scenario,
-                        "median_action_seconds": result["median_action_seconds"],
-                        "median_pyrefly_seconds": result["median_pyrefly_seconds"],
-                        "median_wrapper_seconds": result["median_wrapper_seconds"],
+                        **{
+                            key: value
+                            for key, value in result.items()
+                            if key.startswith(("median_", "min_", "max_", "stddev_"))
+                        },
                         "summary": str(report),
                     }
                 ),

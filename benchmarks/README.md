@@ -14,13 +14,16 @@ bazel run //benchmarks:run -- --scenario namespace --repeats 3 --output-dir /tmp
 
 Use a new directory for `--output-dir`, or omit it to keep results in a temporary directory.
 
-Each JSON line reports one scenario:
+Each JSON line reports one scenario. Timing fields use `min_`, `median_`, `max_` and `stddev_`
+prefixes for statistics across repetitions. `stddev_` is the population standard deviation, zero for
+one repetition:
 
-- `median_action_seconds`: median summed action execution time, including Pyrefly and its wrapper.
-- `median_pyrefly_seconds`: median Pyrefly subprocess time from OTLP traces.
-- `median_wrapper_seconds`: median remaining action time, including Python startup and shutdown.
+- `*_action_seconds`: summed action execution time, including Pyrefly and its wrapper.
+- `*_pyrefly_seconds`: Pyrefly subprocess time from OTLP traces.
+- `*_wrapper_seconds`: remaining action time, including Python startup and shutdown.
 - `summary`: path to the JSON report with per-action timings and paths to logs and OTLP traces.
 
 Times are in seconds and summed across actions per repetition, after a warm-up. They exclude Bazel
-analysis and dependency downloads. The medians are calculated independently; a null breakdown means
-trace timing was unavailable. Compare runs using the same settings and environment.
+analysis and dependency downloads. Statistics are calculated independently. Missing trace timing
+produces null breakdown statistics; malformed trace files cause an error. Compare runs using the
+same settings and environment.
