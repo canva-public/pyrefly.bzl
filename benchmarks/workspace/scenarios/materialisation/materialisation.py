@@ -1,4 +1,12 @@
-"""Check modules from opposite ends of the generated namespace package."""
+"""Exercise materialisation with 1,000 overlapping roots and 40,000 stub modules.
+
+The generated roots share the namespace application.service.src.python.common.
+Importing modules from the first and last roots keeps the check small while the
+wrapper merges the full import view.
+
+Use --scenario materialisation --warm-dependencies to exclude initial fixture
+generation and minification from the measurement.
+"""
 
 from typing import assert_type
 
