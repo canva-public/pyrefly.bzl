@@ -1,0 +1,12 @@
+load("@rules_python//python:defs.bzl", "py_library")
+
+py_library(
+    name = "namespace",
+    srcs = ["namespace.py"],
+    deps = [
+        "@benchmark_pypi//google_api_core",
+        "@benchmark_pypi//google_auth",
+        "@benchmark_pypi//google_cloud_storage",
+        "@benchmark_pypi//googleapis_common_protos",
+    ],
+)

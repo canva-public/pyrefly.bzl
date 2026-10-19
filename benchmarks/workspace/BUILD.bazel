@@ -1,0 +1,19 @@
+load("@pyrefly.bzl", "pyrefly_configuration")
+
+exports_files(["pyproject.toml"])
+
+package_group(
+    name = "external_packages",
+    # The aspect reaches the benchmark's Python dependency graph only.
+    packages = [
+        "-//...",
+        "public",
+    ],
+)
+
+pyrefly_configuration(
+    name = "pyrefly_config",
+    config = ":pyproject.toml",
+    stubgen_include = [":external_packages"],
+    visibility = ["//visibility:public"],
+)
