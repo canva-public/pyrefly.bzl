@@ -1,0 +1,18 @@
+load("@rules_python//python:defs.bzl", "py_binary", "py_library")
+load(":defs.bzl", "generated_import_roots")
+
+py_binary(
+    name = "generator",
+    srcs = ["generator.py"],
+    legacy_create_init = 0,
+)
+
+generated_import_roots(
+    name = "import_roots",
+)
+
+py_library(
+    name = "materialisation",
+    srcs = ["materialisation.py"],
+    deps = [":import_roots"],
+)

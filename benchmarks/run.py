@@ -19,7 +19,7 @@ from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
 
-SCENARIOS = ("small", "namespace", "web")
+SCENARIOS = ("small", "namespace", "web", "materialisation")
 MNEMONICS = ("PyreflyCheck", "PyreflyStubgen", "PyreflyMinify")
 TIMING_FIELDS = ("pyrefly_seconds", "wrapper_seconds")
 
@@ -113,11 +113,16 @@ def build(
     scenario: str,
     jobs: int,
     directory: Path,
+    *,
+    warm_dependencies: bool = False,
 ) -> tuple[list[Action], float]:
     target = f"//scenarios/{scenario}:{scenario}"
     directory.mkdir()
     execution_log = directory / "execution.json"
     build_log = directory / "build.log"
+    forced_actions = (
+        "PyreflyCheck" if warm_dependencies else "Pyrefly(Check|Stubgen|Minify)"
+    )
     command = [
         *bazel,
         "build",
@@ -129,7 +134,7 @@ def build(
         "--noremote_upload_local_results",
         f"--jobs={jobs}",
         "--output_groups=+pyrefly_otlp_traces",
-        f"--modify_execution_info=Pyrefly(Check|Stubgen|Minify)=+benchmark-{uuid.uuid4().hex}",
+        f"--modify_execution_info={forced_actions}=+benchmark-{uuid.uuid4().hex}",
         f"--execution_log_json_file={execution_log}",
         "--noexecution_log_sort",
         *(f"--strategy={mnemonic}=sandboxed" for mnemonic in MNEMONICS),
@@ -148,7 +153,11 @@ def build(
         for action in actions
     ):
         raise RuntimeError(f"Missing executed check for {target}; see {execution_log}")
-    if not any(action.mnemonic == "PyreflyStubgen" for action in actions):
+    if (
+        not warm_dependencies
+        and scenario != "materialisation"
+        and not any(action.mnemonic == "PyreflyStubgen" for action in actions)
+    ):
         raise RuntimeError(f"No external stubgen actions executed; see {execution_log}")
     return actions, wall_seconds
 
@@ -233,12 +242,16 @@ def timing_totals(actions: Sequence[dict[str, Any]]) -> dict[str, float | None]:
     }
 
 
-def timing_statistics(samples: Sequence[dict[str, Any]]) -> dict[str, float | None]:
+def timing_statistics(
+    samples: Sequence[dict[str, Any]],
+    *,
+    fields: Sequence[str] = TIMING_FIELDS,
+) -> dict[str, float | None]:
     return {
         f"{name}_{field}": calculate(sample[field] for sample in samples)
         if all(sample[field] is not None for sample in samples)
         else None
-        for field in TIMING_FIELDS
+        for field in fields
         for name, calculate in (
             ("median", statistics.median),
             ("min", min),
@@ -256,11 +269,35 @@ def benchmark(
     repeats: int,
     jobs: int,
     directory: Path,
+    *,
+    warm_dependencies: bool = False,
 ) -> dict[str, object]:
     target = f"//scenarios/{scenario}:{scenario}"
     directory.mkdir()
+    if warm_dependencies:
+        print(f"Preparing dependencies for {target}", file=sys.stderr, flush=True)
+        prepared, _ = build(
+            bazel,
+            workspace,
+            scenario,
+            jobs,
+            directory / "prepare",
+            warm_dependencies=True,
+        )
+        copy_traces(prepared, execution_root, directory / "prepare")
     print(f"Warming up {target}; artifacts: {directory}", file=sys.stderr, flush=True)
-    warmup, _ = build(bazel, workspace, scenario, jobs, directory / "warmup")
+    warmup, _ = build(
+        bazel,
+        workspace,
+        scenario,
+        jobs,
+        directory / "warmup",
+        warm_dependencies=warm_dependencies,
+    )
+    if warm_dependencies and any(
+        action.mnemonic != "PyreflyCheck" for action in warmup
+    ):
+        raise RuntimeError("Dependency transformations reran after preparation")
     copy_traces(warmup, execution_root, directory / "warmup")
     expected = Counter(action.identity for action in warmup)
     samples = []
@@ -273,7 +310,14 @@ def benchmark(
             file=sys.stderr,
             flush=True,
         )
-        actions, wall_seconds = build(bazel, workspace, scenario, jobs, output)
+        actions, wall_seconds = build(
+            bazel,
+            workspace,
+            scenario,
+            jobs,
+            output,
+            warm_dependencies=warm_dependencies,
+        )
         if Counter(action.identity for action in actions) != expected:
             raise RuntimeError(
                 f"Executed Pyrefly actions differ from warm-up; see {output / 'execution.json'}"
@@ -298,11 +342,12 @@ def benchmark(
         "target": target,
         "jobs": jobs,
         "repeats": repeats,
+        "warm_dependencies": warm_dependencies,
         "median_action_seconds": statistics.median(elapsed_times),
         "min_action_seconds": min(elapsed_times),
         "max_action_seconds": max(elapsed_times),
         "stddev_action_seconds": statistics.pstdev(elapsed_times),
-        **timing_statistics(samples),
+        **timing_statistics(samples, fields=(*TIMING_FIELDS, "command_wall_seconds")),
         "per_action": [
             {
                 "target": target,
@@ -328,6 +373,11 @@ def main(argv: Sequence[str] | None = None) -> None:
     parser.add_argument("--scenario", choices=("all", *SCENARIOS), default="all")
     parser.add_argument("--repeats", type=positive_int, default=5)
     parser.add_argument("--jobs", type=positive_int, default=1)
+    parser.add_argument(
+        "--warm-dependencies",
+        action="store_true",
+        help="Prepare dependency transformations once, then measure repeated checks only.",
+    )
     parser.add_argument("--output-dir", type=Path)
     parser.add_argument("--bazel", default="bazel")
     args = parser.parse_args(argv)
@@ -366,6 +416,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 args.repeats,
                 args.jobs,
                 output / scenario,
+                warm_dependencies=args.warm_dependencies,
             )
             report = output / scenario / "summary.json"
             report.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")
@@ -373,6 +424,7 @@ def main(argv: Sequence[str] | None = None) -> None:
                 json.dumps(
                     {
                         "scenario": scenario,
+                        "warm_dependencies": args.warm_dependencies,
                         **{
                             key: value
                             for key, value in result.items()
