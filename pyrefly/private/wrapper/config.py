@@ -271,7 +271,9 @@ def merge_site_package_dirs(
         for directory in directories:
             if not directory.is_dir():
                 continue
-            _merge_tree(directory, merged, stats)
+            # Absolute link targets retain sandbox input symlinks without resolving
+            # every path component again for each entry in the merged tree.
+            _merge_tree(directory.absolute(), merged, stats)
         logger.debug(
             "Merged %d site-package dirs into %s (%d entries)",
             len(directories),
@@ -329,21 +331,21 @@ def _merge_tree(
             continue
         target = destination / entry.name
         if not target.exists():
-            os.symlink(entry.resolve(), target)
+            os.symlink(entry, target)
             if stats is not None:
                 stats.symlinks_created += 1
-        elif target.is_symlink() and entry.is_dir() and target.resolve().is_dir():
+        elif target.is_symlink() and entry.is_dir() and target.is_dir():
             if stats is not None:
                 stats.directory_collisions += 1
-            existing = target.resolve()
+            existing = target.readlink()
             target.unlink()
             target.mkdir()
             _merge_tree(existing, target, stats)
-            _merge_tree(entry.resolve(), target, stats)
+            _merge_tree(entry, target, stats)
         elif target.is_dir() and not target.is_symlink() and entry.is_dir():
             if stats is not None:
                 stats.directory_collisions += 1
-            _merge_tree(entry.resolve(), target, stats)
+            _merge_tree(entry, target, stats)
 
 
 def dump_toml(settings: Mapping[str, Any]) -> str:
