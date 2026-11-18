@@ -297,3 +297,25 @@ def test_merge_falls_back_when_symlinks_fail(
     )
 
     assert config.merge_site_package_dirs([first, second]) == [str(first), str(second)]
+
+
+def test_namespace_merge_ignores_later_symlink_loops(tmp_path: Path) -> None:
+    """A later symlink loop does not prevent usable namespace roots from merging."""
+    roots = [tmp_path / name for name in ("first", "second", "third")]
+    for index, root in enumerate(roots):
+        root.mkdir()
+        namespace = root / "namespace"
+        if index == 1:
+            namespace.symlink_to("namespace", target_is_directory=True)
+        else:
+            namespace.mkdir()
+            (namespace / f"module_{index}.pyi").touch()
+    stats = config.MergeStats()
+
+    merged = Path(config.merge_site_package_dirs(roots, stats=stats)[0])
+
+    assert sorted(path.name for path in (merged / "namespace").iterdir()) == [
+        "module_0.pyi",
+        "module_2.pyi",
+    ]
+    assert not stats.fallback

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import errno
 import logging
 import os
 import re
@@ -41,7 +42,7 @@ class SourceLayout:
 
 @dataclass
 class MergeStats:
-    """Merge work, including repeated visits and links subsequently removed."""
+    """Input entries visited, directory collisions and final symlinks created."""
 
     entries_visited: int = 0
     directory_collisions: int = 0
@@ -268,17 +269,14 @@ def merge_site_package_dirs(
         return original
     try:
         merged = Path(tempfile.mkdtemp(prefix="pyrefly_merged_"))
-        for directory in directories:
-            if not directory.is_dir():
-                continue
-            # Absolute link targets retain sandbox input symlinks without resolving
-            # every path component again for each entry in the merged tree.
-            _merge_tree(directory.absolute(), merged, stats)
+        # Keep sandbox input symlinks intact rather than resolving each path.
+        sources = [str(path.absolute()) for path in directories if path.is_dir()]
+        entry_count = _merge_tree(sources, str(merged), stats)
         logger.debug(
             "Merged %d site-package dirs into %s (%d entries)",
             len(directories),
             merged,
-            sum(1 for _ in merged.iterdir()),
+            entry_count,
         )
         return [str(merged)]
     except OSError:
@@ -320,32 +318,55 @@ def merge_matching_import_roots(
 
 
 def _merge_tree(
-    source: Path,
-    destination: Path,
+    sources: Sequence[str],
+    destination: str,
     stats: MergeStats | None,
-) -> None:
-    for entry in source.iterdir():
+) -> int:
+    # Plan one directory at a time. Unique subtrees remain symlinks, and only
+    # colliding directories need to be scanned. The destination is not used as
+    # an index: inspecting it would repeatedly follow sandbox input symlinks.
+    entries: dict[str, list[os.DirEntry[str]]] = {}
+    for source in sources:
+        with os.scandir(source) as children:
+            for entry in children:
+                if stats is not None:
+                    stats.entries_visited += 1
+                if entry.name in _SKIP_MERGE_NAMES or entry.name.endswith(
+                    _SKIP_MERGE_SUFFIXES
+                ):
+                    continue
+                entries.setdefault(entry.name, []).append(entry)
+
+    for name, candidates in entries.items():
+        first = candidates[0]
+        target = os.path.join(destination, name)
+        if len(candidates) > 1:
+            # A colliding dangling link made the incremental merge fall back.
+            # Preserve that behaviour and cache followed metadata for is_dir().
+            if first.is_symlink():
+                first.stat()
+            if first.is_dir():
+                directories = [first.path]
+                for entry in candidates[1:]:
+                    try:
+                        if entry.is_dir():
+                            directories.append(entry.path)
+                    except OSError as error:
+                        # Path.is_dir() ignored symlink loops in later roots.
+                        if error.errno != errno.ELOOP:
+                            raise
+                if len(directories) > 1:
+                    if stats is not None:
+                        stats.directory_collisions += len(directories) - 1
+                    os.mkdir(target)
+                    _merge_tree(directories, target, stats)
+                    continue
+        # First-root precedence applies to files and file/directory conflicts.
+        # Create only final links, avoiding links removed on a later collision.
+        os.symlink(first.path, target)
         if stats is not None:
-            stats.entries_visited += 1
-        if entry.name in _SKIP_MERGE_NAMES or entry.name.endswith(_SKIP_MERGE_SUFFIXES):
-            continue
-        target = destination / entry.name
-        if not target.exists():
-            os.symlink(entry, target)
-            if stats is not None:
-                stats.symlinks_created += 1
-        elif target.is_symlink() and entry.is_dir() and target.is_dir():
-            if stats is not None:
-                stats.directory_collisions += 1
-            existing = target.readlink()
-            target.unlink()
-            target.mkdir()
-            _merge_tree(existing, target, stats)
-            _merge_tree(entry, target, stats)
-        elif target.is_dir() and not target.is_symlink() and entry.is_dir():
-            if stats is not None:
-                stats.directory_collisions += 1
-            _merge_tree(entry, target, stats)
+            stats.symlinks_created += 1
+    return len(entries)
 
 
 def dump_toml(settings: Mapping[str, Any]) -> str:
